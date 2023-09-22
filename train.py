@@ -79,7 +79,7 @@ class CW_log():
     def result(self):
         N = self.N
         m = self.class_num
-        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, m*self.cw_cfps_clean/self.in_correct_clean, m*self.cw_cfps_robust/self.in_correct_robust
+        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, self.cw_cfps_clean/self.in_correct_clean, self.cw_cfps_robust/self.in_correct_robust
 
 
 def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
@@ -198,7 +198,8 @@ if __name__ == '__main__':
             print(epoch)
             cw_tensor = cw_tensor.to(device)
             train_robust = cw_tensor[-1, 1, :]
-            class_eps = (torch.ones(10).to(device) * args.lambda_1 + train_robust) * eps
+            #class_eps = (torch.ones(10).to(device) * args.lambda_1 + train_robust) * eps
+            class_eps = train_robust*args.lambda_1
         else:
             class_eps = torch.ones(10).to(device) * eps
         
