@@ -1,3 +1,4 @@
+import argparse
 import json
 import numpy as np
 import pandas as pd
@@ -78,7 +79,7 @@ class CW_log():
     def result(self):
         N = self.N
         m = self.class_num
-        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, self.cw_cfps_clean/self.in_correct_clean, self.cw_cfps_robust/self.in_correct_robust
+        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, m*self.cw_cfps_clean/self.in_correct_clean, m*self.cw_cfps_robust/self.in_correct_robust
 
 
 def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
