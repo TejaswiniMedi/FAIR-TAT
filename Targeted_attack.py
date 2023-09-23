@@ -105,7 +105,6 @@ def pgd_loss(
         eps,
         beta,
         alpha,
-        robust_mcs,
         n_iters = 10,
         **kwargs
     ):
@@ -134,7 +133,6 @@ def cw_pgd_loss(
         eps,
         beta,
         alpha,
-        robust_mcs,
         n_iters = 10,
         **kwargs
     ):
