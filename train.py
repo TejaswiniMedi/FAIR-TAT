@@ -1,49 +1,42 @@
-import argparse
 import json
 import numpy as np
+import argparse
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
-from utils import dev, normalize_cifar, load_valid_dataset, weight_average
+from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from utils import dev, normalize_cifar, load_valid_dataset, weight_average,load_cw_dataset
 from model import PreActResNet18
-from model_wrn import WRN
+#from model_wrn import WRN
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--epochs', default=200, type=int)
+    parser.add_argument('--epochs', default=350, type=int)
     parser.add_argument('--model', default='PRN', type=str, choices=['PRN', 'WRN']) #
     parser.add_argument('--lr_max', default=0.1, type=float)
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
-
     parser.add_argument('--epsilon', default=8, type=int)
     parser.add_argument('--attack-iters', default=10, type=int)
     parser.add_argument('--pgd-alpha', default=2, type=int)
     parser.add_argument('--norm', default='Linf', type=str)
-
     parser.add_argument('--beta', default=6, type=int)  # beta for TRADES
     parser.add_argument('--tau', default=3, type=int)   #  tau for FAT
-
     parser.add_argument('--fname', type=str, default='auto') #TODO
     parser.add_argument('--device', type=int, default=0)
-
     parser.add_argument('--ccm', action='store_true') # CCM
     parser.add_argument('--ccr', action='store_true') # CCR
     parser.add_argument('--adaptive_eps', action='store_true')
-    parser.add_argument('--lambda-1', default=0.5, type=float)
+    parser.add_argument('--cfps', action='store_true')
+    parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
-
-    parser.add_argument('--begin', default=10, type=int)
-
+    parser.add_argument('--begin', default=1, type=int)
     parser.add_argument('--decay-rate', default=0.88 ,type=float)
     parser.add_argument('--thershold', default=0.24, type=float)
-
     parser.add_argument('--debug', action='store_true')
     return parser.parse_args()
 
@@ -52,33 +45,43 @@ class CW_log():
         self.N = 0
         self.robust_acc = 0
         self.clean_acc = 0
+        self.in_correct_robust = 0
+        self.in_correct_clean = 0
         self.cw_robust = torch.zeros(10).to(device)
         self.cw_clean = torch.zeros(10).to(device)
+        self.cw_cfps_robust = torch.zeros(10).to(device)
+        self.cw_cfps_clean = torch.zeros(10).to(device)
         self.class_num = class_num
     
-    def update_clean(self, output, y):
+    def update_clean(self,output, y):
         self.N += len(output)
         pred = output.max(1)[1]
         correct = pred == y
+        incorrect_clean = pred != y
         self.clean_acc += correct.sum()
-
+        self.in_correct_clean += incorrect_clean.sum()
         for i, c in enumerate(y):
             if correct[i]:
                 self.cw_clean[c] += 1
+            elif incorrect_clean[i]:
+                self.cw_cfps_clean[c] += 1
     
     def update_robust(self, output, y):
         pred = output.max(1)[1]
         correct = pred == y
+        incorrect_robust = pred != y
         self.robust_acc += correct.sum()
-
+        self.in_correct_robust += incorrect_robust.sum()
         for i, c in enumerate(y):
             if correct[i]:
                 self.cw_robust[c] += 1
+            elif incorrect_robust[i]:
+                self.cw_cfps_robust[c] += 1
     
     def result(self):
         N = self.N
         m = self.class_num
-        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N
+        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, self.cw_cfps_clean/self.in_correct_clean, self.cw_cfps_robust/self.in_correct_robust
 
 
 def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
@@ -88,14 +91,11 @@ def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
-
-        loss, output = attack(model,x,y,eps,beta,alpha,n_iters)
+        loss, output = attack(model,x,y,eps,beta,alpha,n_iters)   
         opt.zero_grad()
         loss.backward()
         opt.step()
-
         logger.update_robust(output, y)
-
         clean_output = model(normalize_cifar(x)).detach()
         logger.update_clean(clean_output, y)
         if args.debug:
@@ -109,12 +109,10 @@ def eval_epoch(model, loader, device, attack, eps, beta, alpha, n_iters):
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
-
         _, output = attack(model,x,y,eps,beta,alpha,n_iters)
-        logger.update_robust(output, y)
-
+        logger.update_robust(output,y)
         clean_output = model(normalize_cifar(x)).detach()
-        logger.update_clean(clean_output, y)
+        logger.update_clean(clean_output,y)
         if args.debug:
             break
     return logger.result()
@@ -146,11 +144,10 @@ if __name__ == '__main__':
     beta = args.beta / 1.           # 6
     class_eps = torch.ones(10).to(device) * eps
     class_beta = torch.ones(10).to(device) * (beta/(1+beta))
-    iteration = args.attack_iters
-    epochs = args.epochs if args.model == 'PRN' else 100
-
+    iteration = args.attack_iters  # 10
+    epochs = args.epochs if args.model == 'PRN' else 100    # 200 epochs
     train_loader, valid_loader, test_loader = load_valid_dataset('cifar10')
-    
+
     if not os.path.exists('models'):
         os.mkdir('models')
     if not os.path.exists('logs'):
@@ -164,6 +161,7 @@ if __name__ == '__main__':
         json.dump(vars(args), f, indent=4)
     if args.model == 'PRN':
         model = PreActResNet18().to(device)
+
     elif args.model == 'WRN':
         model = WRN().to(device)
     else:
@@ -171,10 +169,12 @@ if __name__ == '__main__':
     
     # init weight averaged model
     EMA_model = PreActResNet18().to(device) if args.model == 'PRN' else WRN().to(device)
+
     FAWA_model = PreActResNet18().to(device) if args.model == 'PRN' else WRN().to(device)
+
     EMA_model.eval()
     FAWA_model.eval()
-
+    # print(EMA_model, FAWA_model)  both models are PreActResNet18
     SEAT_init = False
     
     params = model.parameters()
@@ -213,6 +213,7 @@ if __name__ == '__main__':
                 class_beta[i] = (args.lambda_2+train_robust[i]) * beta / (1 + (args.lambda_2+train_robust[i])*beta)
         else:
             class_beta = torch.ones(10).to(device) * (beta/(1+beta))
+            # going class_beta
 
         # set tau for FAT
         if args.mode == 'FAT':
@@ -243,10 +244,11 @@ if __name__ == '__main__':
         model.eval()
         # test
         test_result = eval_epoch(model, test_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
+        print(test_result)
     
         # valid
         valid_result = eval_epoch(model, valid_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
-        
+        print(valid_result)
         # weight average
         # EMA
         weight_average(EMA_model, model, args.decay_rate, epoch==0)
@@ -268,8 +270,8 @@ if __name__ == '__main__':
         log_data.append(torch.tensor([epoch, train_result[0], train_result[1], 
         valid_result[0], valid_result[1], test_result[0], test_result[1]]))
 
-        cw_data.append(torch.stack([train_result[2], train_result[3], 
-        valid_result[2], valid_result[3], test_result[2], test_result[3]], dim=0))
+        cw_data.append(torch.stack([train_result[3], train_result[5], 
+        valid_result[3], valid_result[5], test_result[3], test_result[5]], dim=0))     # target__cfpr and robust 
 
         log_tensor = torch.stack(log_data, dim=0).cpu() # Epochs * 7
         cw_tensor = torch.stack(cw_data, dim=0).cpu()   # Epochs * 6 * 10
@@ -277,16 +279,25 @@ if __name__ == '__main__':
         torch.save(log_tensor, f'models/{args.fname}/log.pth')
         torch.save(cw_tensor, f'models/{args.fname}/cw_log.pth')
 
+
         # plot
         log_arr = log_tensor.numpy()
+        eval_result_2 = test_result[2].cpu().numpy()
+        eval_result_3 = test_result[3].cpu().numpy()
+        class_wise_eps = class_eps.cpu().numpy()
         cw_arr = cw_tensor.min(2)[0].numpy()
         log_arr = np.concatenate([log_arr, cw_arr], axis=1)
         report_arr = np.concatenate([log_arr[:, 5:7], cw_arr[:, 4:]], axis=1) # clean, robust, min-clean, min-robust
+        df = pd.DataFrame(eval_result_2)
+        df.to_csv(f'logs/{args.fname}/eval_test_clean.csv')
+        df = pd.DataFrame(eval_result_3)
+        df.to_csv(f'logs/{args.fname}/eval_test_robust.csv')
+        df = pd.DataFrame(class_wise_eps)
+        df.to_csv(f'logs/{args.fname}/class_wise_eps.csv')
         df = pd.DataFrame(log_arr)
         df.to_csv(f'logs/{args.fname}/log.csv')
         df = pd.DataFrame(report_arr)
         df.to_csv(f'logs/{args.fname}/report_log.csv')
-
         EMA_log.append([
             torch.tensor([EMA_result[0], EMA_result[1], EMA_result[2].min(), EMA_result[3].min()]).cpu().numpy()
         ])
@@ -322,3 +333,19 @@ if __name__ == '__main__':
             if index >= save_threshold[2] - 0.02 or epoch >= args.epochs-5:
                 torch.save(FAWA_model.state_dict(), f'models/{args.fname}/FAWA_{epoch}.pth')
                 save_threshold[2] = max(save_threshold[2], index.item())
+
+   
+    
+  
+ 
+
+
+   
+   
+
+       
+     
+
+  
+
+        
