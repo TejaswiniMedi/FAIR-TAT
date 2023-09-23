@@ -1,8 +1,8 @@
 import torch
-import torch.nn as nn
-from torch.utils.data import dataset, dataloader
 from torchvision import datasets, transforms
+from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
+import os
 
 PATH = 'data/cifar-10-batches-py'
 def dev(id):
@@ -24,6 +24,90 @@ def normalize_cifar(x):
 
 def normalize_cifar_100(x):
     return (x - mu_100.to(x.device))/(std_100.to(x.device))
+
+def get_dataset(
+        dataset = "cifar10",
+        batch_size_train = 128,
+        batch_size_valid = 128,
+        batch_size_test  = 128,
+        num_workers_train = 6,
+        num_workers_valid = 3,
+        num_workers_test  = 3,
+    ):
+    if not os.path.exists("data"):
+        os.mkdir("data")
+    if dataset == "cifar10":
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4, padding_mode="reflect"),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor()
+        ])
+        test_transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
+        train_set = datasets.CIFAR10(
+            PATH,
+            train = True,
+            download = True,
+            transform = train_transform
+        )
+        valid_set = datasets.CIFAR10(
+            PATH,
+            train = True,
+            download = True,
+            transform = test_transform
+        )
+        ori_label = torch.tensor(train_set.targets)
+        n = 100 # for each classes (2% of 5000)
+        valid_index, train_index = [], []
+        for i in range(10):
+            valid_index_i = (ori_label==i).nonzero()[:n]
+            train_index_i = (ori_label==i).nonzero()[n:]
+            valid_index.append(valid_index_i)
+            train_index.append(train_index_i)
+        valid_index = torch.cat(valid_index, dim=0).flatten()
+        train_index = torch.cat(train_index, dim=0).flatten()
+        
+        N = len(train_index)
+        order = np.random.permutation(N)
+        train_index = train_index[order]
+        
+        train_sampler = SubsetRandomSampler(train_index)
+        valid_sampler = SubsetRandomSampler(valid_index)
+        
+        train_loader = torch.utils.data.DataLoader(
+            train_set,
+            batch_size = batch_size_train,
+            shuffle = False,
+            sampler = train_sampler,
+            pin_memory = True,
+            persistent_workers = num_workers_train > 1,
+            num_workers = num_workers_train
+        )
+        valid_loader = torch.utils.data.DataLoader(
+            valid_set,
+            batch_size = batch_size_valid,
+            shuffle = False,
+            sampler = valid_sampler,
+            pin_memory = True,
+            persistent_workers = num_workers_valid > 1,
+            num_workers = num_workers_valid
+        )
+        test_loader = torch.utils.data.DataLoader(
+            datasets.CIFAR10(
+                PATH,
+                train = False,
+                download = True,
+                transform = test_transform
+            ),
+            batch_size = batch_size_test,
+            shuffle = False,
+            pin_memory = True,
+            persistent_workers = num_workers_test > 1,
+            num_workers = num_workers_test
+        )
+        
+        return train_loader, valid_loader, test_loader
 
 def load_dataset(dataset='cifar10', batch_size=128):
     if dataset == 'cifar10':

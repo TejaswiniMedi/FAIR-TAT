@@ -11,7 +11,7 @@ import os
 # import matplotlib.pyplot as plt
 from tqdm import tqdm
 from attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
-from utils import dev, normalize_cifar, load_valid_dataset, weight_average,load_cw_dataset
+from utils import dev, normalize_cifar, get_dataset, weight_average
 from model import PreActResNet18
 #from model_wrn import WRN
 
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     class_beta = torch.ones(10).to(device) * (beta/(1+beta))
     iteration = args.attack_iters  # 10
     epochs = args.epochs if args.model == 'PRN' else 100    # 200 epochs
-    train_loader, valid_loader, test_loader = load_valid_dataset('cifar10')
+    train_loader, valid_loader, test_loader = get_dataset('cifar10')
 
     if not os.path.exists('models'):
         os.mkdir('models')
