@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, load_valid_dataset, weight_average,load_cw_dataset
 from model import PreActResNet18
 #from model_wrn import WRN
