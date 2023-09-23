@@ -1,0 +1,21 @@
+# Random Targeted Adversarial Training with adaptive eps based on class-wise robust accuracies of targets
+```
+python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --random_target --adaptive_eps --lambda-1 1.5
+```
+# Random Targeted Adversarial Training with adaptive eps based on class-wise false positive score (cfps) of targets
+```
+python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --random_target --adaptive_eps --cfps --lambda-1 1.5
+```
+# Target selection based on robust accuracy  prior with adaptive eps based on class-wise robust accuracies of targets
+```
+python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm  --adaptive_eps --lambda-1 1.5
+```
+# Target selection based on cfps  prior with adaptive eps based on class-wise false positive score (cfps) of targets
+```
+python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --adaptive_eps --cfps --lambda-1 1.5
+```
+# Random Targeted training with eps being constant
+```
+python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --random_target --lambda-1 1.5
+```
+
