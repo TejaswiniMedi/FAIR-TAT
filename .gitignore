@@ -1,0 +1,5 @@
+data/*
+logs/*
+_bkp/*
+__pycache__/*
+models/*
