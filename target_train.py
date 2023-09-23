@@ -151,7 +151,7 @@ def lr_schedule_wrn(t):
 if __name__ == '__main__':
     args = get_args()
     if args.fname == 'auto':
-        args.fname = f'cifar10_{args.model}_{args.mode}{"_ccm" if args.ccm else ""}{"_ccr" if args.ccr else ""}'
+        args.fname = f'cifar10_{args.model}_{args.mode}_{"ccm" if args.ccm else ""}_{"ccr" if args.ccr else ""}_{"random_target" if args.random_target else ""}_{"adaptive_eps" if args.adaptive_eps else ""}_{"cfps" if args.cfps else ""}_{"gt_targets" if args.gt_targets else ""}'
     fname = args.fname
     device = dev(args.device)
     eps = args.epsilon / 255.       # 8/255
