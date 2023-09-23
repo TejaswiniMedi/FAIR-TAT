@@ -26,7 +26,19 @@ class CrossEntropyLossManual:
         return loss
 
 
-def attack_pgd(model, x, y,y_t, eps, alpha, n_iters, dataset='cifar10' ,norm='Linf'):
+def attack_pgd(
+        model,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        n_iters,
+        dataset = 'cifar10',
+        norm = 'Linf',
+        **kwargs
+    ):
     delta = torch.zeros_like(x).to(x.device)
     if norm == 'Linf':
         delta.uniform_(-eps, eps)
@@ -49,7 +61,17 @@ def attack_pgd(model, x, y,y_t, eps, alpha, n_iters, dataset='cifar10' ,norm='Li
     return delta.detach()
 
 
-def cw_attack_pgd(model, x, y,y_t, eps, alpha, n_iters,norm='Linf'):
+def cw_attack_pgd(
+        model,
+        x,
+        y,
+        y_t,
+        eps,
+        alpha,
+        n_iters,
+        norm = "Linf",
+        **kwargs
+    ):
     delta = torch.zeros_like(x).to(x.device)   # size of the input
     base = torch.ones_like(x).to(x.device)      # size of the input
     for sample in range(len(x)):
@@ -75,19 +97,63 @@ def cw_attack_pgd(model, x, y,y_t, eps, alpha, n_iters,norm='Linf'):
         delta.grad.zero_()    
     return delta.detach()   # paramter learned for every pixel value
 
-def pgd_loss(model, x, y,y_t, eps, beta, alpha,robust_mcs, n_iters=10):
-    delta = attack_pgd(model, x, y,y_t, eps, alpha, n_iters)
+def pgd_loss(
+        model,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        robust_mcs,
+        n_iters = 10,
+        **kwargs
+    ):
+    delta = attack_pgd(
+        model,
+        x,
+        y,
+        y_t,
+        eps,
+        alpha,
+        n_iters
+    )
     robust_output = model(normalize_cifar(x + delta))
     criterion = nn.CrossEntropyLoss()
-    return criterion(robust_output, y), robust_output.clone().detach()
+    return (
+        criterion(robust_output, y),
+        robust_output.clone().detach()
+    )
 
 
-def cw_pgd_loss(model, x, y,y_t, cw_eps, beta, alpha,robust_mcs, n_iters=10):
-    batch_eps = cw_eps[y]   # change this
-    delta = cw_attack_pgd(model, x, y,y_t, batch_eps, alpha, n_iters)
+def cw_pgd_loss(
+        model,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        robust_mcs,
+        n_iters = 10,
+        **kwargs
+    ):
+    batch_eps = eps[y] # change this
+    delta = cw_attack_pgd(
+        model,
+        x,
+        y,
+        y_t,
+        batch_eps,
+        alpha,
+        n_iters
+    )
     robust_output = model(normalize_cifar(x + delta))
     criterion = CrossEntropyLossManual()
-    return criterion(robust_output, y), robust_output.clone().detach()
+    return (
+        criterion(robust_output, y),
+        robust_output.clone().detach()
+    )
 
 def trades_loss(model, x_natural, y,y_t, epsilon, cw_beta, step_size=0.003, perturb_steps=10):
     # define KL-loss

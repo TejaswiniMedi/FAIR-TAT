@@ -124,7 +124,16 @@ def train_epoch(
             num_samples = y.shape[0]
             sample_indices = torch.multinomial(probs, num_samples, replacement=True)
             y_t = y[sample_indices]
-        loss, output = attack(model,x,y,y_t,eps,beta,alpha,n_iters)   
+        loss, output = attack(
+            model = model,
+            x = x,
+            y = y,
+            y_t = y_t,
+            eps = eps,
+            beta = beta,
+            alpha = alpha,
+            n_iters = n_iters
+        )
         opt.zero_grad()
         loss.backward()
         opt.step()
@@ -179,6 +188,13 @@ def lr_schedule_wrn(t):
     
 if __name__ == '__main__':
     args = get_args()
+    ################
+    # args.mode = "AT"
+    # args.ccm = True
+    # args.random_target = True
+    # args.adaptive_eps = True
+    # args.lambda_1 = 0.5
+    ################
     if args.fname == 'auto':
         args.fname = f'cifar10_{args.model}_{args.mode}_{"ccm" if args.ccm else ""}_{"ccr" if args.ccr else ""}_{"random_target" if args.random_target else ""}_{"adaptive_eps" if args.adaptive_eps else ""}_{"cfps" if args.cfps else ""}_{"gt_targets" if args.gt_targets else ""}'
     fname = args.fname
