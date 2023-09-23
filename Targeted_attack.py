@@ -6,7 +6,7 @@ from torch.autograd import Variable
 
 from utils import normalize_cifar
 
-def attack_pgd(model, x, y, eps, alpha, n_iters, dataset='cifar10' ,norm='Linf'):
+def attack_pgd(model, x, y, y_t, eps, alpha, n_iters, dataset='cifar10' ,norm='Linf'):
     delta = torch.zeros_like(x).to(x.device)
     if norm == 'Linf':
         delta.uniform_(-eps, eps)
@@ -30,7 +30,7 @@ def attack_pgd(model, x, y, eps, alpha, n_iters, dataset='cifar10' ,norm='Linf')
     
     return delta.detach()
 
-def cw_attack_pgd(model, x, y, eps, alpha, n_iters,norm='Linf'):
+def cw_attack_pgd(model, x, y, y_t, eps, alpha, n_iters,norm='Linf'):
     delta = torch.zeros_like(x).to(x.device)
     base = torch.ones_like(x).to(x.device)
     for sample in range(len(x)):
@@ -48,10 +48,10 @@ def cw_attack_pgd(model, x, y, eps, alpha, n_iters,norm='Linf'):
     delta.requires_grad = True
     for _ in range(n_iters):
         output = model(normalize_cifar(x+delta))
-        loss = F.cross_entropy(output, y)
+        loss = F.cross_entropy(output, y_t)
         loss.backward()
         grad = delta.grad.detach()
-        d = torch.clamp(delta + alpha * torch.sign(grad), min=-eps, max=eps)
+        d = torch.clamp(delta - alpha * torch.sign(grad), min=-eps, max=eps)
         d = torch.clamp(d, 0 - x, 1 - x)
         delta.data = d
         delta.grad.zero_()
@@ -83,9 +83,9 @@ def pgd_loss(
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
 
-def cw_pgd_loss(model, x, y, cw_eps, beta, alpha, n_iters=10):
+def cw_pgd_loss(model, x, y, y_t,cw_eps, beta, alpha, n_iters=10):
     batch_eps = cw_eps[y]
-    delta = cw_attack_pgd(model, x, y, batch_eps, alpha, n_iters)
+    delta = cw_attack_pgd(model, x, y, y_t, batch_eps, alpha, n_iters)
     robust_output = model(normalize_cifar(x + delta))
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
