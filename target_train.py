@@ -32,6 +32,7 @@ def get_args():
     parser.add_argument('--ccr', action='store_true') # CCR
     parser.add_argument('--random_target', action='store_true') 
     parser.add_argument('--adaptive_eps', action='store_true')
+    parser.add_argument('--gt_targets', action='store_true')
     parser.add_argument('--cfps', action='store_true')
     parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
@@ -58,6 +59,8 @@ class CW_log():
         self.N += len(output)
         pred = output.max(1)[1]
         correct = pred == y
+        if args.gt_targets:
+            y_t = y
         incorrect_clean = pred != y_t
         self.clean_acc += correct.sum()
         self.in_correct_clean += incorrect_clean.sum()
@@ -70,6 +73,8 @@ class CW_log():
     def update_robust(self, output, y,y_t):
         pred = output.max(1)[1]
         correct = pred == y
+        if args.gt_targets:
+            y_t = y
         incorrect_robust = pred != y_t
         self.robust_acc += correct.sum()
         self.in_correct_robust += incorrect_robust.sum()
