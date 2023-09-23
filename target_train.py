@@ -129,7 +129,7 @@ def train_epoch(
             x = x,
             y = y,
             y_t = y_t,
-            eps = eps,
+            cw_eps = eps,
             beta = beta,
             alpha = alpha,
             n_iters = n_iters
