@@ -16,5 +16,5 @@ python generate_validation.py
 
 To run the code :
 ```
-python train.py --mode 'AT' --fname 'AT_CFA' --ccm --lambda-1 0.5
+python train.py --mode 'AT' --ccm --lambda-1 0.5
 ```
