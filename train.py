@@ -1,6 +1,6 @@
-import argparse
 import json
 import numpy as np
+import argparse
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -30,6 +30,9 @@ def get_args():
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--ccm', action='store_true') # CCM
     parser.add_argument('--ccr', action='store_true') # CCR
+    parser.add_argument('--random_target', action='store_true') 
+    parser.add_argument('--adaptive_eps', action='store_true')
+    parser.add_argument('--cfps', action='store_true')
     parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
     parser.add_argument('--begin', default=1, type=int)
@@ -89,7 +92,13 @@ def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
-        y_t = torch.randint(0,10,(y.shape[0],)).cuda()  # random target
+        if args.random_target:
+            y_t = torch.randint(0,10,(y.shape[0],)).cuda()  # random target
+        else:
+            probs = eps
+            num_samples = y.shape[0]
+            sample_indices = torch.multinomial(probs, num_samples, replacement=True)
+            y_t = y[sample_indices]
         loss, output = attack(model,x,y,y_t,eps,beta,alpha,n_iters)   
         opt.zero_grad()
         loss.backward()
@@ -108,7 +117,8 @@ def eval_epoch(model, loader, device, attack, eps, beta, alpha, n_iters):
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
-        y_t = torch.randint(0,10,(y.shape[0],)).cuda()  #random target
+        #y_t = torch.randint(0,10,(y.shape[0],)).cuda()  #random target
+        y_t = y
         _, output = attack(model,x,y,y_t,eps,beta,alpha,n_iters)
         logger.update_robust(output,y,y_t)
         clean_output = model(normalize_cifar(x)).detach()
@@ -195,13 +205,17 @@ if __name__ == '__main__':
         model.train()
         # ccm
         if epoch >= args.begin:
-            print(epoch)
-            cw_tensor = cw_tensor.to(device)
-            train_robust = cw_tensor[-1, 1, :]
-            #class_eps = (torch.ones(10).to(device) * args.lambda_1 + train_robust) * eps
-            class_eps = train_robust*args.lambda_1
-        else:
-            class_eps = torch.ones(10).to(device) * eps
+            if args.adaptive_eps:
+                if args.cfps:
+                    cw_tensor = cw_tensor.to(device)
+                    train_robust = cw_tensor[-1, 1, :]
+                    class_eps = (torch.ones(10).to(device) * args.lambda_1 + train_robust) * eps
+                else:
+                    cw_tensor = cw_tensor.to(device)
+                    train_robust = cw_tensor[-1, 0, :]
+                    class_eps = (torch.ones(10).to(device) * args.lambda_1 + train_robust) * eps
+            else:
+                class_eps = torch.ones(10).to(device) * eps
         
         # ccr
         if args.ccr and epoch >= args.begin:
@@ -266,8 +280,8 @@ if __name__ == '__main__':
         log_data.append(torch.tensor([epoch, train_result[0], train_result[1], 
         valid_result[0], valid_result[1], test_result[0], test_result[1]]))
 
-        cw_data.append(torch.stack([train_result[4], train_result[5], 
-        valid_result[4], valid_result[5], test_result[4], test_result[5]], dim=0))     # target__cfpr 
+        cw_data.append(torch.stack([train_result[3], train_result[5], 
+        valid_result[3], valid_result[5], test_result[3], test_result[5]], dim=0))     # target__cfpr and robust 
 
         log_tensor = torch.stack(log_data, dim=0).cpu() # Epochs * 7
         cw_tensor = torch.stack(cw_data, dim=0).cpu()   # Epochs * 6 * 10
