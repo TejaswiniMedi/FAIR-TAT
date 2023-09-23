@@ -109,13 +109,14 @@ def pgd_loss(
         **kwargs
     ):
     delta = attack_pgd(
-        model,
-        x,
-        y,
-        y_t,
-        eps,
-        alpha,
-        n_iters
+        model = model,
+        x = x,
+        y = y,
+        y_t = y_t,
+        eps = eps,
+        alpha = alpha,
+        beta = beta,
+        n_iters = n_iters
     )
     robust_output = model(normalize_cifar(x + delta))
     criterion = nn.CrossEntropyLoss()
