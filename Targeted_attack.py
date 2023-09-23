@@ -6,7 +6,7 @@ from torch.autograd import Variable
 
 from utils import normalize_cifar
 
-def attack_pgd(model, x, y, y_t, eps, alpha, n_iters, dataset='cifar10' ,norm='Linf'):
+def attack_pgd(model, x, y, y_t, eps, beta,alpha, n_iters, dataset='cifar10' ,norm='Linf'):
     delta = torch.zeros_like(x).to(x.device)
     if norm == 'Linf':
         delta.uniform_(-eps, eps)
