@@ -59,7 +59,7 @@ class CW_log():
         self.cw_cfps_clean = np.zeros(10)
         self.class_num = class_num
     
-    def update_clean(self,output, y):
+    def update_clean(self, output, y):
         self.N += len(output)
         pred = output.max(1)[1].cpu().numpy()
         y = y.cpu().numpy()

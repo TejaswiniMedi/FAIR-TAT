@@ -3,10 +3,10 @@ import numpy as np
 import argparse
 import pandas as pd
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+# import torch.nn as nn
+# import torch.nn.functional as F
 import os
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, load_valid_dataset, weight_average,load_cw_dataset
@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--tau', default=3, type=int)   #  tau for FAT
     parser.add_argument('--fname', type=str, default='auto') #TODO
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--ccm', action='store_true') # CCM
+    parser.add_argument('--ccm', action='store_true', default=True) # CCM
     parser.add_argument('--ccr', action='store_true') # CCR
     parser.add_argument('--random_target', action='store_true') 
     parser.add_argument('--adaptive_eps', action='store_true')
@@ -49,15 +49,17 @@ class CW_log():
         self.clean_acc = 0
         self.in_correct_robust = 0
         self.in_correct_clean = 0
-        self.cw_robust = torch.zeros(10).to(device)
-        self.cw_clean = torch.zeros(10).to(device)
-        self.cw_cfps_robust = torch.zeros(10).to(device)
-        self.cw_cfps_clean = torch.zeros(10).to(device)
+        self.cw_robust = np.zeros(10)
+        self.cw_clean = np.zeros(10)
+        self.cw_cfps_robust = np.zeros(10)
+        self.cw_cfps_clean = np.zeros(10)
         self.class_num = class_num
     
-    def update_clean(self,output, y,y_t):
+    def update_clean(self,output, y, y_t):
         self.N += len(output)
-        pred = output.max(1)[1]
+        pred = output.max(1)[1].cpu().numpy()
+        y = y.cpu().numpy()
+        y_t = y_t.cpu().numpy()
         correct = pred == y
         if args.gt_targets:
             y_t = y
@@ -70,8 +72,10 @@ class CW_log():
             elif incorrect_clean[i]:
                 self.cw_cfps_clean[c] += 1
     
-    def update_robust(self, output, y,y_t):
-        pred = output.max(1)[1]
+    def update_robust(self, output, y, y_t):
+        pred = output.max(1)[1].cpu().numpy()
+        y = y.cpu().numpy()
+        y_t = y_t.cpu().numpy()
         correct = pred == y
         if args.gt_targets:
             y_t = y
@@ -87,13 +91,29 @@ class CW_log():
     def result(self):
         N = self.N
         m = self.class_num
-        return self.clean_acc/N, self.robust_acc/N, m*self.cw_clean/N, m*self.cw_robust/N, self.cw_cfps_clean/self.in_correct_clean, self.cw_cfps_robust/self.in_correct_robust
+        return (
+            self.clean_acc / N,
+            self.robust_acc / N,
+            m*self.cw_clean / N,
+            m*self.cw_robust / N,
+            self.cw_cfps_clean / self.in_correct_clean,
+            self.cw_cfps_robust / self.in_correct_robust
+        )
 
-
-def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
+def train_epoch(
+        model,
+        loader,
+        opt,
+        device,
+        attack,
+        eps,
+        beta,
+        alpha,
+        n_iters
+    ):
     model.train()
     logger = CW_log()
-    loader = tqdm(loader)
+    # loader = tqdm(loader)
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
@@ -115,10 +135,19 @@ def train_epoch(model, loader, opt, device, attack, eps, beta, alpha, n_iters):
             break
     return logger.result()
 
-def eval_epoch(model, loader, device, attack, eps, beta, alpha, n_iters):
+def eval_epoch(
+        model,
+        loader,
+        device,
+        attack,
+        eps,
+        beta,
+        alpha,
+        n_iters
+    ):
     model.eval()
     logger = CW_log()
-    loader = tqdm(loader)
+    # loader = tqdm(loader)
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
@@ -198,7 +227,7 @@ if __name__ == '__main__':
     cw_data = []  # Epochs * 6 * 10:    Epoch, min-{train_clean, train, valid_clean, valid, test_clean, test}
     EMA_log, FAWA_log = [], []
     save_threshold = [0, 0, 0] # robust+min_robust, for main, EMA, FAWA
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs), desc="Epoch"):
         # update learning rate
         if args.model == 'WRN':
             lr = lr_schedule_wrn(epoch)
@@ -252,22 +281,69 @@ if __name__ == '__main__':
 
 
         if args.ccm:
-            train_result = train_epoch(model, train_loader, opt, device, attack, class_eps, class_beta, alpha, iteration)
+            train_result = train_epoch(
+                model = model,
+                loader = train_loader,
+                opt = opt,
+                device = device,
+                attack = attack,
+                eps = class_eps,
+                beta = class_beta,
+                alpha = alpha,
+                n_iters = iteration
+            )
         else:
-            train_result = train_epoch(model, train_loader, opt, device, attack, eps, class_beta, alpha, iteration)
+            train_result = train_epoch(
+                model = model,
+                loader = train_loader,
+                opt = opt,
+                device = device,
+                attack = attack,
+                eps = eps,
+                beta = class_beta,
+                alpha = alpha,
+                n_iters = iteration
+            )
         
         model.eval()
         # test
-        test_result = eval_epoch(model, test_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
+        test_result = eval_epoch(
+            model = model,
+            loader = test_loader,
+            device = device,
+            attack = pgd_loss,
+            eps = 8./255.,
+            beta = beta,
+            alpha = 2./255.,
+            n_iters = 10
+        )
         print(test_result)
     
         # valid
-        valid_result = eval_epoch(model, valid_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
+        valid_result = eval_epoch(
+            model = model,
+            loader = valid_loader,
+            device = device,
+            attack = pgd_loss,
+            eps = 8./255.,
+            beta = beta,
+            alpha = 2./255.,
+            n_iters = 10
+        )
         print(valid_result)
         # weight average
         # EMA
         weight_average(EMA_model, model, args.decay_rate, epoch==0)
-        EMA_result = eval_epoch(EMA_model, test_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
+        EMA_result = eval_epoch(
+            model = EMA_model,
+            loader = test_loader,
+            device = device,
+            attack = pgd_loss,
+            eps = 8./255.,
+            beta = beta,
+            alpha = 2./255.,
+            n_iters = 10
+        )
 
         # FAWA
         R_min = valid_result[3].min()
@@ -279,14 +355,38 @@ if __name__ == '__main__':
                 weight_average(FAWA_model, model, args.decay_rate, False)
         else:
             weight_average(FAWA_model, model, 1., False)
-        FAWA_result = eval_epoch(FAWA_model, test_loader, device, pgd_loss, 8./255., beta, 2./255., 10)
+        FAWA_result = eval_epoch(
+            model = FAWA_model,
+            loader = test_loader,
+            device = device,
+            attack = pgd_loss,
+            eps = 8./255.,
+            beta = beta,
+            alpha = 2./255.,
+            n_iters = 10
+        )
 
         # log result
-        log_data.append(torch.tensor([epoch, train_result[0], train_result[1], 
-        valid_result[0], valid_result[1], test_result[0], test_result[1]]))
+        log_data.append(torch.tensor([
+            epoch,
+            train_result[0],
+            train_result[1],
+            valid_result[0],
+            valid_result[1],
+            test_result[0],
+            test_result[1]
+        ]))
 
-        cw_data.append(torch.stack([train_result[3], train_result[5], 
-        valid_result[3], valid_result[5], test_result[3], test_result[5]], dim=0))     # target__cfpr and robust 
+        cw_data.append(
+            torch.tensor(np.stack([
+                train_result[3],
+                train_result[5],
+                valid_result[3],
+                valid_result[5],
+                test_result[3],
+                test_result[5]
+            ], axis=0))
+        ) # target__cfpr and robust 
 
         log_tensor = torch.stack(log_data, dim=0).cpu() # Epochs * 7
         cw_tensor = torch.stack(cw_data, dim=0).cpu()   # Epochs * 6 * 10
@@ -297,8 +397,8 @@ if __name__ == '__main__':
 
         # plot
         log_arr = log_tensor.numpy()
-        eval_result_2 = test_result[2].cpu().numpy()
-        eval_result_3 = test_result[3].cpu().numpy()
+        eval_result_2 = test_result[2]
+        eval_result_3 = test_result[3]
         class_wise_eps = class_eps.cpu().numpy()
         cw_arr = cw_tensor.min(2)[0].numpy()
         log_arr = np.concatenate([log_arr, cw_arr], axis=1)
@@ -314,10 +414,20 @@ if __name__ == '__main__':
         df = pd.DataFrame(report_arr)
         df.to_csv(f'logs/{args.fname}/report_log.csv')
         EMA_log.append([
-            torch.tensor([EMA_result[0], EMA_result[1], EMA_result[2].min(), EMA_result[3].min()]).cpu().numpy()
+            torch.tensor([
+                EMA_result[0],
+                EMA_result[1],
+                EMA_result[2].min(),
+                EMA_result[3].min()
+            ]).cpu().numpy()
         ])
         FAWA_log.append([
-            torch.tensor([FAWA_result[0], FAWA_result[1], FAWA_result[2].min(), FAWA_result[3].min()]).cpu().numpy()
+            torch.tensor([
+                FAWA_result[0],
+                FAWA_result[1],
+                FAWA_result[2].min(),
+                FAWA_result[3].min()
+            ]).cpu().numpy()
         ])
 
         EMA_data = np.concatenate(EMA_log, axis=0)
