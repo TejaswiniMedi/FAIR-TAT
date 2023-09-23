@@ -90,7 +90,7 @@ def cw_pgd_loss(model, x, y, y_t,cw_eps, beta, alpha, n_iters=10):
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
 
-def trades_loss(model, x_natural, y, epsilon, cw_beta, step_size=0.003, perturb_steps=10):
+def trades_loss(model, x_natural, y,y_t, epsilon, cw_beta, step_size=0.003, perturb_steps=10):
     # define KL-loss
     criterion_kl = nn.KLDivLoss(size_average=False)
     model.eval()
@@ -126,7 +126,7 @@ def trades_loss(model, x_natural, y, epsilon, cw_beta, step_size=0.003, perturb_
 
     return loss, robust_out.clone().detach()
 
-def cw_trades_loss(model, x_natural, y, cw_eps, cw_beta, step_size, perturb_steps):
+def cw_trades_loss(model, x_natural, y, y_t,cw_eps, cw_beta, step_size, perturb_steps):
     batch_beta = cw_beta[y]
     batch_eps = cw_eps[y]
     base = torch.ones_like(x_natural).to(x_natural.device)
@@ -168,7 +168,7 @@ def cw_trades_loss(model, x_natural, y, cw_eps, cw_beta, step_size, perturb_step
 
     return loss, robust_out.clone().detach()
 
-def fat_loss(model, x, y, eps, tau, alpha, n_iters=10):
+def fat_loss(model, x, y,y_t, eps, tau, alpha, n_iters=10):
     K = n_iters
     control = (torch.ones(len(x)) * tau).to(x.device)
     delta = torch.zeros_like(x).to(x.device)
@@ -213,7 +213,7 @@ def fat_loss(model, x, y, eps, tau, alpha, n_iters=10):
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
 
-def cw_fat_loss(model, x, y, cw_eps, tau, alpha, n_iters=10):
+def cw_fat_loss(model, x, y,y_t,cw_eps, tau, alpha, n_iters=10):
     batch_eps = cw_eps[y]
     delta = torch.zeros_like(x).to(x.device)
     base = torch.ones_like(x).to(x.device)
