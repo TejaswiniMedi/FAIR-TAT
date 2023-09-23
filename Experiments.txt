@@ -19,3 +19,21 @@ python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --adaptive_eps --cfps 
 python target_train.py --mode 'AT' --fname 'AT_CFA' --ccm --random_target --lambda-1 1.5
 ```
 
+
+# Untargeted training with eps being constant
+```
+python train.py --mode 'AT' --fname 'AT_CFA' --ccm  --lambda-1 1.5
+```
+# Untargeted training with  adaptive eps based on class-wise false positive score (cfps) of ground truth targets
+```
+python train.py --mode 'AT' --fname 'AT_CFA' --ccm  --adaptive_eps --cfps --lambda-1 1.5
+```
+# Untargeted training with  adaptive eps based on robust accuracies of ground truth targets
+```
+python train.py --mode 'AT' --fname 'AT_CFA' --ccm  --adaptive_eps  --lambda-1 1.5
+```
+
+
+
+
+
