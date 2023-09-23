@@ -50,6 +50,9 @@ python train.py --mode 'AT' --fname 'AT_CFA' --ccm  --adaptive_eps  --lambda-1 1
 ```
 
 
+Replace AT with TRADES, FAT for comparison baselines
+
+
 
 
 
