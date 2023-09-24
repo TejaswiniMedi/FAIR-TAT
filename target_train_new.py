@@ -38,6 +38,7 @@ def get_args():
     parser.add_argument('--lambda-2', default=0.5, type=float)
     parser.add_argument('--begin', default=1, type=int)
     parser.add_argument('--decay-rate', default=0.88 ,type=float)
+    parser.add_argument('--untargeted', action='store_true', default=False)
     parser.add_argument('--thershold', default=0.24, type=float)
     parser.add_argument('--debug', action='store_true')
     return parser.parse_args()
@@ -168,7 +169,8 @@ def train_epoch(
             cw_eps = eps,
             beta = beta,
             alpha = alpha,
-            n_iters = n_iters
+            attack_mode = args.untargeted,
+            n_iters = 10
         )
         opt.zero_grad()
         loss.backward()
