@@ -36,6 +36,8 @@ def get_args():
     parser.add_argument('--adaptive_eps_aggr', type=str, choices=["avg", "min"], default="avg")
     parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
+    parser.add_argument('--lambda-c', default=0.5, type=float)
+    parser.add_argument('--lambda-r', default=1.5, type=float)
     parser.add_argument('--begin', default=1, type=int)
     parser.add_argument('--decay-rate', default=0.88 ,type=float)
     parser.add_argument('--untargeted', type=int, default=False)
@@ -336,7 +338,11 @@ if __name__ == '__main__':
                         scaling = log_train_results[-1].robust_cw_cfns_target
                     else:
                         raise NotImplementedError("shouldn't get here")
-                    class_eps += [(np.ones(10) * args.lambda_1 + scaling) * eps]
+                    if "-rob" in _adaptive_eps:
+                        lambd = args.lambda_r
+                    else:
+                        lambd = args.lambda_c
+                    class_eps += [(np.ones(10) * lambd + scaling) * eps]
                 # combine eps
                 class_eps = np.stack(class_eps)
                 if args.adaptive_eps_aggr == "avg":
