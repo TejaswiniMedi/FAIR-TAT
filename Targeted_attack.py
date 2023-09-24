@@ -30,7 +30,7 @@ def attack_pgd(model, x, y, y_t, eps, beta,alpha, n_iters, dataset='cifar10' ,no
     
     return delta.detach()
 
-def cw_attack_pgd(model, x, y, y_t, eps, alpha,attack_mode,n_iters,norm='Linf'):
+def cw_attack_pgd(model, x, y, y_t, eps, alpha,attack_mode_UT,n_iters,norm='Linf'):
     delta = torch.zeros_like(x).to(x.device)
     base = torch.ones_like(x).to(x.device)
     for sample in range(len(x)):
@@ -48,11 +48,11 @@ def cw_attack_pgd(model, x, y, y_t, eps, alpha,attack_mode,n_iters,norm='Linf'):
     delta.requires_grad = True
     for _ in range(n_iters):
         output = model(normalize_cifar(x+delta))
-        if attack_mode:
-            loss = F.cross_entropy(output, y_t)
+        if attack_mode_UT:
+            loss = F.cross_entropy(output, y)
             loss.backward()
             grad = delta.grad.detach()
-            d = torch.clamp(delta - alpha * torch.sign(grad), min=-eps, max=eps)
+            d = torch.clamp(delta + alpha * torch.sign(grad), min=-eps, max=eps)
             d = torch.clamp(d, 0 - x, 1 - x)
             delta.data = d
             delta.grad.zero_()
