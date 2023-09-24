@@ -91,9 +91,9 @@ def pgd_loss(
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
 
-def cw_pgd_loss(model, x, y, y_t,cw_eps, beta, alpha,attack_mode,n_iters=10):
+def cw_pgd_loss(model, x, y, y_t,cw_eps, beta, alpha,attack_mode_UT,n_iters=10):
     batch_eps = cw_eps[y]
-    delta = cw_attack_pgd(model, x, y, y_t, batch_eps, alpha, attack_mode,n_iters)
+    delta = cw_attack_pgd(model, x, y, y_t, batch_eps, alpha, attack_mode_UT,n_iters)
     robust_output = model(normalize_cifar(x + delta))
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
