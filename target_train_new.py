@@ -43,6 +43,9 @@ def get_args():
     parser.add_argument('--untargeted', type=int, default=False)
     parser.add_argument('--thershold', default=0.24, type=float)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--num_workers_train', default=8, type=int)
+    parser.add_argument('--num_workers_valid', default=4, type=int)
+    parser.add_argument('--num_workers_test', default=4, type=int)
     return parser.parse_args()
 
 class CW_log():
@@ -238,11 +241,12 @@ def lr_schedule_wrn(t):
 if __name__ == '__main__':
     args = get_args()
     ################
-    # args.mode = "AT"
-    # args.ccm = True
-    # args.random_target = True
-    # args.adaptive_eps = ["G-rob"]
-    # args.lambda_1 = 0.5
+    args.mode = "AT"
+    args.ccm = True
+    args.random_target = True
+    args.adaptive_eps = None
+    args.lambda_1 = 0.5
+    args.untargeted = 1
     ################
     if args.fname == 'auto':
         args.fname = 'cifar10_{}_{}_{}_{}_{}_{}'.format(
@@ -263,7 +267,15 @@ if __name__ == '__main__':
     class_beta = torch.ones(10).to(device) * (beta/(1+beta))
     iteration = args.attack_iters  # 10
     epochs = args.epochs if args.model == 'PRN' else 100    # 200 epochs
-    train_loader, valid_loader, test_loader = get_dataset('cifar10')
+    train_loader, valid_loader, test_loader = get_dataset(
+        dataset = "cifar10",
+        num_workers_train = args.num_workers_train,
+        num_workers_valid = args.num_workers_valid,
+        num_workers_test = args.num_workers_test,
+    )
+    print(train_loader.dataset)
+    print(valid_loader.dataset)
+    print(test_loader.dataset)
 
     if not os.path.exists('models'):
         os.mkdir('models')
