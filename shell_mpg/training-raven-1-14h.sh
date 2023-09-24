@@ -18,7 +18,10 @@ if [ "$#" -eq 0 ]; then
     python target_train_new.py \
     	--mode AT \
     	--ccm \
-    	--random_target
+    	--random_target \
+    	--num_workers_train 0 \
+    	--num_workers_valid 0 \
+    	--num_workers_test 0
 fi
 
 if [ "$#" -eq 3 ]; then
@@ -26,6 +29,9 @@ if [ "$#" -eq 3 ]; then
     	--mode AT \
     	--ccm \
     	--random_target \
+    	--num_workers_train 0 \
+    	--num_workers_valid 0 \
+    	--num_workers_test 0 \
     	--lambda-r $1 \
     	--lambda-c $2 \
     	--untargeted $3
@@ -36,6 +42,9 @@ if [ "$#" -ge 4 ]; then
     	--mode AT \
     	--ccm \
     	--random_target \
+    	--num_workers_train 0 \
+    	--num_workers_valid 0 \
+    	--num_workers_test 0 \
     	--lambda-r $1 \
     	--lambda-c $2 \
     	--untargeted $3 \
