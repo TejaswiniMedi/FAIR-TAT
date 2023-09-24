@@ -96,12 +96,12 @@ class CW_log():
                 d.gt.tp_by_class[c] += 1
             else:
                 d.gt.fp_by_class[pred[i]] += 1
-                d.gt.fn_by_class[y] += 1
+                d.gt.fn_by_class[c] += 1
             if correct_target[i]:
                 d.target.tp_by_class[c] += 1
             else:
                 d.target.fp_by_class[pred[i]] += 1
-                d.target.fn_by_class[y] += 1
+                d.target.fn_by_class[c] += 1
     
     def result(self):
         # N = self.N
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     # args.mode = "AT"
     # args.ccm = True
     # args.random_target = True
-    # # args.adaptive_eps = True
+    # args.adaptive_eps = ["G-rob"]
     # args.lambda_1 = 0.5
     ################
     if args.fname == 'auto':
