@@ -1,0 +1,25 @@
+sbatch training-raven-1-14h.sh 0.5 1.5 1
+sbatch training-raven-1-14h.sh 0.5 1.5 1 G-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 1 G-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 1 G-cfns
+
+sbatch training-raven-1-14h.sh 0.5 1.5 0
+
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-rob T-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-rob T-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-rob T-cfns
+
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfps T-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfps T-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfps T-cfns
+
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfns
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfns T-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfns T-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 0 G-cfns T-cfns
+
+sbatch training-raven-1-14h.sh 0.5 1.5 0 T-rob
+sbatch training-raven-1-14h.sh 0.5 1.5 0 T-cfps
+sbatch training-raven-1-14h.sh 0.5 1.5 0 T-cfns

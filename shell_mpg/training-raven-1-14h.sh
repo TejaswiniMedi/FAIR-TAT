@@ -14,21 +14,30 @@ conda activate mlp
 
 cd /u/jungs/Targeted-Adversarial-Training/
 
-if [ "$#" -eq 2 ]; then
+if [ "$#" -eq 0 ]; then
     python target_train_new.py \
     	--mode AT \
     	--ccm \
-    	--random_target \
-    	--lambda-1 $1 \
-    	--untargeted $2
+    	--random_target
 fi
 
-if [ "$#" -ge 3 ]; then
+if [ "$#" -eq 3 ]; then
     python target_train_new.py \
     	--mode AT \
     	--ccm \
     	--random_target \
-    	--lambda-1 $1 \
-    	--untargeted $2 \
-    	--adaptive_eps "${@:3}"
+    	--lambda-r $1 \
+    	--lambda-c $2 \
+    	--untargeted $3
+fi
+
+if [ "$#" -ge 4 ]; then
+    python target_train_new.py \
+    	--mode AT \
+    	--ccm \
+    	--random_target \
+    	--lambda-r $1 \
+    	--lambda-c $2 \
+    	--untargeted $3 \
+    	--adaptive_eps "${@:4}"
 fi
