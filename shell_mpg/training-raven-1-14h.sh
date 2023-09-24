@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -p gpu
 #SBATCH -t 13:58:00
-#SBATCH -o /u/jungs/MLPConv/logs/cluster.%A.%a.%x.log
+#SBATCH -o /u/jungs/Targeted-Adversarial-Training/logs/cluster.%A.%a.%x.log
 #SBATCH -a 0-0
 #SBATCH --gres gpu:1
 
