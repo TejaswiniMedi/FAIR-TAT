@@ -61,9 +61,7 @@ class CW_log():
         y = y.cpu().numpy()
         y_t = y_t.cpu().numpy()
         correct = pred == y
-        if args.gt_targets:
-            y_t = y
-        incorrect_clean = pred != y_t
+        incorrect_clean = pred != y
         self.clean_acc += correct.sum()
         self.in_correct_clean += incorrect_clean.sum()
         for i, c in enumerate(y):
@@ -76,9 +74,9 @@ class CW_log():
         pred = output.max(1)[1].cpu().numpy()
         y = y.cpu().numpy()
         y_t = y_t.cpu().numpy()
-        correct = pred == y
         if args.gt_targets:
             y_t = y
+        correct = pred == y_t
         incorrect_robust = pred != y_t
         self.robust_acc += correct.sum()
         self.in_correct_robust += incorrect_robust.sum()
