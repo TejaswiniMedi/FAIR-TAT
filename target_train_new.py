@@ -224,11 +224,11 @@ def lr_schedule_wrn(t):
 if __name__ == '__main__':
     args = get_args()
     ################
-    args.mode = "AT"
-    args.ccm = True
-    args.random_target = True
-    # args.adaptive_eps = True
-    args.lambda_1 = 0.5
+    # args.mode = "AT"
+    # args.ccm = True
+    # args.random_target = True
+    # # args.adaptive_eps = True
+    # args.lambda_1 = 0.5
     ################
     if args.fname == 'auto':
         args.fname = 'cifar10_{}_{}_{}_{}_{}_{}'.format(
