@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('--ccm', action='store_true', default=True) # CCM
     parser.add_argument('--ccr', action='store_true') # CCR
     parser.add_argument('--random_target', action='store_true') 
-    parser.add_argument('--adaptive_eps', nargs="*", choices=["G-c", "G-r", "T-c", "T-r"])
+    parser.add_argument('--adaptive_eps', nargs="*", choices=["G-cfps", "G-cfns", "G-rob", "T-cfps", "T-cfns", "T-rob"])
     parser.add_argument('--adaptive_eps_aggr', type=str, choices=["avg", "min"], default="avg")
     parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
@@ -50,12 +50,14 @@ class CW_log():
             gt = edict(
                 correct = 0,
                 fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num)
+                tp_by_class = np.zeros(class_num),
+                fn_by_class = np.zeros(class_num)
             ),
             target = edict(
                 correct = 0,
                 fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num)
+                tp_by_class = np.zeros(class_num),
+                fn_by_class = np.zeros(class_num)
             )
         )
         self.robust = edict(
@@ -63,12 +65,14 @@ class CW_log():
             gt = edict(
                 correct = 0,
                 fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num)
+                tp_by_class = np.zeros(class_num),
+                fn_by_class = np.zeros(class_num)
             ),
             target = edict(
                 correct = 0,
                 fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num)
+                tp_by_class = np.zeros(class_num),
+                fn_by_class = np.zeros(class_num)
             )
         )
     
@@ -91,11 +95,13 @@ class CW_log():
             if correct_gt[i]:
                 d.gt.tp_by_class[c] += 1
             else:
-                d.gt.fp_by_class[c] += 1
+                d.gt.fp_by_class[pred[i]] += 1
+                d.gt.fn_by_class[y] += 1
             if correct_target[i]:
                 d.target.tp_by_class[c] += 1
             else:
-                d.target.fp_by_class[c] += 1
+                d.target.fp_by_class[pred[i]] += 1
+                d.target.fn_by_class[y] += 1
     
     def result(self):
         # N = self.N
@@ -121,6 +127,10 @@ class CW_log():
             clean_cw_cfps_target = self.clean.target.fp_by_class / (self.clean.N - self.clean.target.correct),
             robust_cw_cfps_gt = self.robust.gt.fp_by_class / (self.robust.N - self.robust.gt.correct),
             robust_cw_cfps_target = self.robust.target.fp_by_class / (self.robust.N - self.robust.target.correct),
+            clean_cw_cfns_gt = self.clean.gt.fn_by_class / (self.clean.N - self.clean.gt.correct),
+            clean_cw_cfns_target = self.clean.target.fn_by_class / (self.clean.N - self.clean.target.correct),
+            robust_cw_cfns_gt = self.robust.gt.fn_by_class / (self.robust.N - self.robust.gt.correct),
+            robust_cw_cfns_target = self.robust.target.fn_by_class / (self.robust.N - self.robust.target.correct),
         )
 
 ##########
@@ -310,14 +320,18 @@ if __name__ == '__main__':
                 class_eps = []
                 # how to scale eps?
                 for _adaptive_eps in args.adaptive_eps:
-                    if _adaptive_eps == "G-r":
+                    if _adaptive_eps == "G-rob":
                         scaling = log_train_results[-1].robust_cw_acc_gt
-                    elif _adaptive_eps == "T-r":
+                    elif _adaptive_eps == "T-rob":
                         scaling = log_train_results[-1].robust_cw_acc_target
-                    elif _adaptive_eps == "G-c":
+                    elif _adaptive_eps == "G-cfps":
                         scaling = log_train_results[-1].robust_cw_cfps_gt
-                    elif _adaptive_eps == "T-c":
+                    elif _adaptive_eps == "T-cfps":
                         scaling = log_train_results[-1].robust_cw_cfps_target
+                    elif _adaptive_eps == "G-cfns":
+                        scaling = log_train_results[-1].robust_cw_cfns_gt
+                    elif _adaptive_eps == "T-cfns":
+                        scaling = log_train_results[-1].robust_cw_cfns_target
                     else:
                         raise NotImplementedError("shouldn't get here")
                     class_eps += [(np.ones(10) * args.lambda_1 + scaling) * eps]
