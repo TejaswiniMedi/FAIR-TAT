@@ -169,7 +169,7 @@ def train_epoch(
             cw_eps = eps,
             beta = beta,
             alpha = alpha,
-            attack_mode = args.untargeted,
+            attack_mode_UT = args.untargeted,
             n_iters = 10
         )
         opt.zero_grad()
