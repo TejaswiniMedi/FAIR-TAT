@@ -6,7 +6,7 @@ import torch
 # import torch.nn as nn
 # import torch.nn.functional as F
 import os
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, get_dataset, weight_average
@@ -51,6 +51,7 @@ def get_args():
 class CW_log():
     def __init__(self, class_num = 10) -> None:
         self.class_num = class_num
+        self.flip_count = 0
         self.clean = edict(
             N = 0,
             gt = edict(
@@ -82,7 +83,7 @@ class CW_log():
             )
         )
     
-    def update(self, which, output, y, y_t):
+    def update(self, which, output, y, y_t,flips):
         assert which in ["clean", "robust"]
         d = getattr(self, which)
         
@@ -95,6 +96,7 @@ class CW_log():
         correct_target = pred == y_t
         
         d.gt.correct += correct_gt.sum()
+        self.flip_count += flips
         d.target.correct += correct_target.sum()
         
         for i, c in enumerate(y):
@@ -137,6 +139,7 @@ class CW_log():
             clean_cw_cfns_target = self.clean.target.fn_by_class / (self.clean.N - self.clean.target.correct),
             robust_cw_cfns_gt = self.robust.gt.fn_by_class / (self.robust.N - self.robust.gt.correct),
             robust_cw_cfns_target = self.robust.target.fn_by_class / (self.robust.N - self.robust.target.correct),
+            flip_score = self.flip_count / (2*self.robust.N)
         )
 
 ##########
@@ -156,16 +159,20 @@ def train_epoch(
     model.train()
     logger = CW_log()
     # loader = tqdm(loader)
+    list_gt_train = []
+    list_target_train = []
+    list_pred_train_clean = []
+    list_pred_train_robust = []
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
         if args.random_target:
-            y_t = torch.randint(0,10,(y.shape[0],)).cuda()  # random target
+            y_t = get_rand_target(y)
         else:
             probs = eps
             num_samples = y.shape[0]
             sample_indices = torch.multinomial(probs, num_samples, replacement=True)
-            y_t = y[sample_indices]
+            y_t = sample_indices
         loss, output = attack(
             model = model,
             x = x,
@@ -180,11 +187,25 @@ def train_epoch(
         opt.zero_grad()
         loss.backward()
         opt.step()
-        logger.update("robust", output, y, y_t)
+        robust_predictions = output.max(1)[1].cpu().numpy()
         clean_output = model(normalize_cifar(x)).detach()
+        clean_predictions = clean_output.max(1)[1].cpu().numpy()
+        flip_count = np.sum(clean_predictions!=robust_predictions)
+        logger.update("robust", output, y, y_t)
         logger.update("clean", clean_output, y, y_t)
         if args.debug:
             break
+        list_gt_train.append(y.cpu().numpy())
+        list_target_train.append(y_t.cpu().numpy())
+        list_pred_train_clean.append(clean_predictions)
+        list_pred_train_robust.append(robust_predictions)
+    train_epoch_data = {
+            "gt_train": [item for iteration in list_gt_train for item in iteration],  
+            "target_train": [item for iteration in list_target_train for item in iteration],
+            "pred_train_clean" : [item for iteration in list_pred_train_clean for item in iteration],
+            "pred_train_robust": [item for iteration in list_pred_train_robust for item in iteration]
+        }
+    save_epoch_data(epoch,"train",train_epoch_data)
     return logger.result()
 
 def eval_epoch(
@@ -195,11 +216,16 @@ def eval_epoch(
         eps,
         beta,
         alpha,
-        n_iters
+        n_iters,
+        type
     ):
     model.eval()
     logger = CW_log()
     # loader = tqdm(loader)
+    list_gt_eval = []
+    list_target_eval = []
+    list_pred_eval_clean = []
+    list_pred_eval_robust = []
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
@@ -215,12 +241,45 @@ def eval_epoch(
             alpha = alpha,
             n_iters = n_iters
         )
-        logger.update("robust", output, y, y_t)
+        robust_predictions = output.max(1)[1].cpu().numpy()
         clean_output = model(normalize_cifar(x)).detach()
+        clean_predictions = clean_output.max(1)[1].cpu().numpy()
+        flip_count = np.sum(clean_predictions!=robust_predictions)
+        logger.update("robust", output, y, y_t)
         logger.update("clean", clean_output, y, y_t)
         if args.debug:
             break
+        list_gt_eval.append(y.cpu().numpy())
+        list_target_eval.append(y_t.cpu().numpy())
+        list_pred_eval_clean.append(clean_predictions)
+        list_pred_eval_robust.append(robust_predictions)
+    eval_epoch_data = {
+            f"gt_{type}": [item for iteration in list_gt_eval for item in iteration],  
+            f"target_{type}": [item for iteration in list_target_eval for item in iteration],
+            f"pred_{type}_clean" : [item for iteration in list_pred_eval_clean for item in iteration],
+            f"pred_{type}_robust": [item for iteration in list_pred_eval_robust for item in iteration]
+        }
+    save_epoch_data(epoch,type,eval_epoch_data)
     return logger.result()
+
+def get_rand_target(label, num_classes=10):
+    target = torch.randint_like(label, 0, num_classes)
+    diff = target == label
+    while diff.any():
+        target[diff] = torch.randint_like(target[diff], 0, num_classes)
+        diff = target == label
+    return target
+    
+def save_epoch_data(epoch,epoch_data_type, epoch_data):
+    base_dir = "epoch_info"
+    os.makedirs(base_dir, exist_ok=True)
+    data_dir = os.path.join(base_dir, epoch_data_type)
+    epoch_dir = os.path.join(data_dir, f"epoch_{epoch}")
+    os.makedirs(epoch_dir, exist_ok=True)
+    filename = f"data_epoch_{epoch}.npy"
+    file_path = os.path.join(epoch_dir, filename)
+    np.save(file_path, epoch_data)
+
 
 def lr_schedule(t):
     if t / args.epochs < 0.5:
@@ -449,7 +508,8 @@ if __name__ == '__main__':
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
-            n_iters = 10
+            n_iters = 10,
+            type = "test"
         )
         print()
         print("########## Test Result ##########")
@@ -466,7 +526,8 @@ if __name__ == '__main__':
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
-            n_iters = 10
+            n_iters = 10,
+            type = "valid"
         )
         print()
         print("########## Valid Result ##########")
@@ -484,7 +545,8 @@ if __name__ == '__main__':
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
-            n_iters = 10
+            n_iters = 10,
+            type = "test"
         )
         print()
         print("########## EMA Result ##########")
@@ -510,7 +572,8 @@ if __name__ == '__main__':
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
-            n_iters = 10
+            n_iters = 10,
+            type = "test"
         )
         print()
         print("########## FAWA Result ##########")
