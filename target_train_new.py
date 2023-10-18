@@ -96,11 +96,11 @@ class CW_log():
         correct_target = pred == y_t
         
         d.gt.correct += correct_gt.sum()
+        d.target.correct += correct_target.sum()
         if which == "robust":
             self.flip_count += flips
         else:
             self.flip_count = self.flip_count
-        d.target.correct += correct_target.sum()
         
         for i, c in enumerate(y):
             if correct_gt[i]:
