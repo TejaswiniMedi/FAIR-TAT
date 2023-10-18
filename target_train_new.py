@@ -96,7 +96,10 @@ class CW_log():
         correct_target = pred == y_t
         
         d.gt.correct += correct_gt.sum()
-        self.flip_count += flips
+        if which == "robust":
+            self.flip_count += flips
+        else:
+            self.flip_count = self.flip_count
         d.target.correct += correct_target.sum()
         
         for i, c in enumerate(y):
@@ -139,7 +142,7 @@ class CW_log():
             clean_cw_cfns_target = self.clean.target.fn_by_class / (self.clean.N - self.clean.target.correct),
             robust_cw_cfns_gt = self.robust.gt.fn_by_class / (self.robust.N - self.robust.gt.correct),
             robust_cw_cfns_target = self.robust.target.fn_by_class / (self.robust.N - self.robust.target.correct),
-            flip_score = self.flip_count / (2*self.robust.N)
+            flip_score = self.flip_count / (self.robust.N)
         )
 
 ##########
@@ -191,8 +194,8 @@ def train_epoch(
         clean_output = model(normalize_cifar(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
         flip_count = np.sum(clean_predictions!=robust_predictions)
-        logger.update("robust", output, y, y_t)
-        logger.update("clean", clean_output, y, y_t)
+        logger.update("robust", output, y, y_t, flip_count)
+        logger.update("clean", clean_output, y, y_t, flip_count)
         if args.debug:
             break
         list_gt_train.append(y.cpu().numpy())
@@ -245,8 +248,8 @@ def eval_epoch(
         clean_output = model(normalize_cifar(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
         flip_count = np.sum(clean_predictions!=robust_predictions)
-        logger.update("robust", output, y, y_t)
-        logger.update("clean", clean_output, y, y_t)
+        logger.update("robust", output, y, y_t, flip_count)
+        logger.update("clean", clean_output, y, y_t, flip_count)
         if args.debug:
             break
         list_gt_eval.append(y.cpu().numpy())
