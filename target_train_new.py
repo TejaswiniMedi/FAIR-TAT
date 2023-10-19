@@ -319,6 +319,8 @@ if __name__ == '__main__':
             "ccr" if args.ccr else "",
             "random_target" if args.random_target else "",
             ",".join(args.adaptive_eps) if args.adaptive_eps else "",
+            f"alpha_{args.pgd_alpha}",
+            f"its_{args.attack_iters}"
         )
     print(args)
     fname = args.fname
