@@ -277,7 +277,7 @@ def save_epoch_data(epoch,epoch_data_type, epoch_data):
     base_dir = "epoch_info"
     os.makedirs(base_dir, exist_ok=True)
     data_dir = os.path.join(base_dir, epoch_data_type)
-    epoch_dir = os.path.join(data_dir, f"epoch_{epoch}")
+    epoch_dir = os.path.join(data_dir,args.fname, f"epoch_{epoch}")
     os.makedirs(epoch_dir, exist_ok=True)
     filename = f"data_epoch_{epoch}.npy"
     file_path = os.path.join(epoch_dir, filename)
