@@ -33,4 +33,7 @@ python target_train_new.py \
     --lambda-c 1.5 \
     --untargeted 0 \
     --adaptive_eps T-rob \
-    --lr_max ${lr_max}
+    --lr_max ${lr_max} \
+    --num_workers_train 0 \
+    --num_workers_valid 0 \
+    --num_workers_test 0

@@ -320,7 +320,7 @@ if __name__ == '__main__':
             ",".join(args.adaptive_eps) if args.adaptive_eps else "",
             f"alpha_{args.pgd_alpha}",
             f"its_{args.attack_iters}",
-            f"lr_ {args.lr_max}"
+            f"lr_{args.lr_max}"
         )
     print(args)
     fname = args.fname
