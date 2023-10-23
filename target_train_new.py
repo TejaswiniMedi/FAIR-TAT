@@ -311,7 +311,7 @@ if __name__ == '__main__':
     # args.untargeted = 1
     ################
     if args.fname == 'auto':
-        args.fname = 'cifar10_{}_{}_{}_{}_{}_{}_{}'.format(
+        args.fname = 'cifar10_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}'.format(
             args.model,
             args.mode,
             args.untargeted,
@@ -320,7 +320,8 @@ if __name__ == '__main__':
             "random_target" if args.random_target else "",
             ",".join(args.adaptive_eps) if args.adaptive_eps else "",
             f"alpha_{args.pgd_alpha}",
-            f"its_{args.attack_iters}"
+            f"its_{args.attack_iters}",
+            f"lr_ {args.lr_max}"
         )
     print(args)
     fname = args.fname
