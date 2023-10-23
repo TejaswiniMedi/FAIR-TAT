@@ -6,7 +6,6 @@ import torch
 # import torch.nn as nn
 # import torch.nn.functional as F
 import os
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, get_dataset, weight_average
