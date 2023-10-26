@@ -551,7 +551,7 @@ if __name__ == '__main__':
             beta = beta,
             alpha = 2./255.,
             n_iters = 10,
-            type = "test"
+            type = "test_EMA"
         )
         print()
         print("########## EMA Result ##########")
@@ -578,7 +578,7 @@ if __name__ == '__main__':
             beta = beta,
             alpha = 2./255.,
             n_iters = 10,
-            type = "test"
+            type = "test_FAWA"
         )
         print()
         print("########## FAWA Result ##########")
