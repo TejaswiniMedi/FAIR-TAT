@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument('--beta', default=6, type=int)  # beta for TRADES
     parser.add_argument('--tau', default=3, type=int)   #  tau for FAT
     parser.add_argument('--fname', type=str, default='auto') #TODO
+    parser.add_argument('--prefix', type=str, default='')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--ccm', action='store_true', default=True) # CCM
     parser.add_argument('--ccr', action='store_true') # CCR
@@ -322,6 +323,8 @@ if __name__ == '__main__':
             f"its_{args.attack_iters}",
             f"lr_{args.lr_max}"
         )
+    if args.prefix:
+        args.fname = args.prefix + "_" + args.fname
     print(args)
     fname = args.fname
     device = dev(args.device)
