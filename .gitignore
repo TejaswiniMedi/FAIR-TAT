@@ -3,3 +3,7 @@ logs/*
 _bkp/*
 __pycache__/*
 models/*
+epoch_info
+epoch_info1
+epoch_info_correct
+notebooks

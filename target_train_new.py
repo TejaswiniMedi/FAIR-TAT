@@ -19,6 +19,7 @@ def get_args():
     parser.add_argument('--epochs', default=350, type=int)
     parser.add_argument('--model', default='PRN', type=str, choices=['PRN', 'WRN']) #
     parser.add_argument('--lr_max', default=0.1, type=float)
+    parser.add_argument('--lr_schedule', default='step3', type=str)
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
     parser.add_argument('--epsilon', default=8, type=int)
     parser.add_argument('--attack-iters', default=10, type=int)
@@ -292,6 +293,16 @@ def lr_schedule(t):
     else:
         return args.lr_max / 100.
 
+def lr_schedule_new(t):
+    if t / args.epochs < 0.25:
+        return args.lr_max
+    elif t / args.epochs < 0.5:
+        return args.lr_max / 10.
+    elif t / args.epochs < 0.75:
+        return args.lr_max / 100.
+    else:
+        return args.lr_max / 1000.
+
 def lr_schedule_wrn(t):
     if t < 75:
         return args.lr_max
@@ -393,7 +404,12 @@ if __name__ == '__main__':
         if args.model == 'WRN':
             lr = lr_schedule_wrn(epoch)
         else:
-            lr = lr_schedule(epoch)
+            if args.lr_schedule == "step3":
+                lr = lr_schedule(epoch)
+            elif args.lr_schedule == "step4":
+                lr = lr_schedule_new(epoch)
+            else:
+                raise RuntimeError(f"lr_schedule not understood: {args.lr_schedule}")
         opt.param_groups[0].update(lr=lr)
         
         # train
