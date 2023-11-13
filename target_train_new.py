@@ -322,7 +322,7 @@ if __name__ == '__main__':
     # args.untargeted = 1
     ################
     if args.fname == 'auto':
-        args.fname = 'cifar10_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}'.format(
+        args.fname = 'cifar10_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}'.format(
             args.model,
             args.mode,
             args.untargeted,
@@ -333,7 +333,8 @@ if __name__ == '__main__':
             f"alpha_{args.pgd_alpha}",
             f"its_{args.attack_iters}",
             f"lr_{args.lr_max}",
-            f"lr_{args.lr_schedule}"
+            f"lr_{args.lr_schedule}",
+            f"bs_{args.batch_size}"
         )
     if args.prefix:
         args.fname = args.prefix + "_" + args.fname
