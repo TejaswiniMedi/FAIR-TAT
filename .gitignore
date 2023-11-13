@@ -7,4 +7,5 @@ epoch_info
 epoch_info1
 epoch_info_correct
 epoch_info_lr_step4
+epoch_info_batchsize
 notebooks

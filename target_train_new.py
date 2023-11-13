@@ -352,6 +352,9 @@ if __name__ == '__main__':
         num_workers_train = args.num_workers_train,
         num_workers_valid = args.num_workers_valid,
         num_workers_test = args.num_workers_test,
+        batch_size_train = args.batch_size,
+        batch_size_valid = args.batch_size,
+        batch_size_test = args.batch_size,
     )
     print(train_loader.dataset)
     print(valid_loader.dataset)
