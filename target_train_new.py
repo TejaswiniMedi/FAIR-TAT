@@ -7,19 +7,20 @@ import torch
 # import torch.nn.functional as F
 import os
 from tqdm import tqdm
-from Targeted_attack import pgd_loss, cw_pgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
-from utils import dev, normalize_cifar, get_dataset, weight_average
+from Targeted_attack import pgd_loss, cw_pgd_loss #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average
 from model import PreActResNet18
 from model_wrn import WRN
 from easydict import EasyDict as edict
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--epochs', default=350, type=int)
     parser.add_argument('--model', default='PRN', type=str, choices=['PRN', 'WRN']) #
     parser.add_argument('--lr_max', default=0.1, type=float)
-    parser.add_argument('--lr_schedule', default='step3', type=str)
+    parser.add_argument('--lr_schedule', default='step3', type=str, choices=["step3", "step4", "steplr"])
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
     parser.add_argument('--epsilon', default=8, type=int)
     parser.add_argument('--attack-iters', default=10, type=int)
@@ -38,7 +39,8 @@ def get_args():
     parser.add_argument('--lambda-1', default=1, type=float)
     parser.add_argument('--lambda-2', default=0.5, type=float)
     parser.add_argument('--lambda-c', default=1.5, type=float)
-    parser.add_argument('--lambda-r', default=0.5, type=float)
+    parser.add_argument('--lambda-r', default=1.5, type=float)
+    parser.add_argument('--kldiv', default=2.0, type=float)
     parser.add_argument('--begin', default=1, type=int)
     parser.add_argument('--decay-rate', default=0.88 ,type=float)
     parser.add_argument('--untargeted', type=int, default=False)
@@ -50,37 +52,37 @@ def get_args():
     return parser.parse_args()
 
 class CW_log():
-    def __init__(self, class_num = 10) -> None:
-        self.class_num = class_num
+    def __init__(self, num_classes) -> None:
+        self.class_num = num_classes
         self.flip_count = 0
         self.clean = edict(
             N = 0,
             gt = edict(
                 correct = 0,
-                fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num),
-                fn_by_class = np.zeros(class_num)
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
             ),
             target = edict(
                 correct = 0,
-                fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num),
-                fn_by_class = np.zeros(class_num)
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
             )
         )
         self.robust = edict(
             N = 0,
             gt = edict(
                 correct = 0,
-                fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num),
-                fn_by_class = np.zeros(class_num)
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
             ),
             target = edict(
                 correct = 0,
-                fp_by_class = np.zeros(class_num),
-                tp_by_class = np.zeros(class_num),
-                fn_by_class = np.zeros(class_num)
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
             )
         )
     
@@ -161,7 +163,7 @@ def train_epoch(
         n_iters
     ):
     model.train()
-    logger = CW_log()
+    logger = CW_log(num_classes=num_classes)
     # loader = tqdm(loader)
     list_gt_train = []
     list_target_train = []
@@ -171,7 +173,7 @@ def train_epoch(
         x, y = batch
         x, y = x.to(device), y.to(device)
         if args.random_target:
-            y_t = get_rand_target(y)
+            y_t = get_rand_target(y, num_classes=num_classes)
         else:
             probs = eps
             num_samples = y.shape[0]
@@ -179,6 +181,7 @@ def train_epoch(
             y_t = sample_indices
         loss, output = attack(
             model = model,
+            normalize = normalize,
             x = x,
             y = y,
             y_t = y_t,
@@ -188,11 +191,20 @@ def train_epoch(
             attack_mode_UT = args.untargeted,
             n_iters = 10
         )
+        if args.kldiv > 0:
+            with torch.no_grad():
+                output_clean = model(normalize(x))
+            loss_kl = torch.nn.KLDivLoss(reduction="mean")(
+                torch.nn.functional.log_softmax(output, dim=1),
+                torch.nn.functional.log_softmax(output_clean, dim=1)
+            )
+            loss = loss + 2*loss_kl
+        
         opt.zero_grad()
         loss.backward()
         opt.step()
         robust_predictions = output.max(1)[1].cpu().numpy()
-        clean_output = model(normalize_cifar(x)).detach()
+        clean_output = model(normalize(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
         flip_count = np.sum(clean_predictions!=robust_predictions)
         logger.update("robust", output, y, y_t, flip_count)
@@ -224,7 +236,7 @@ def eval_epoch(
         type
     ):
     model.eval()
-    logger = CW_log()
+    logger = CW_log(num_classes=num_classes)
     # loader = tqdm(loader)
     list_gt_eval = []
     list_target_eval = []
@@ -237,6 +249,7 @@ def eval_epoch(
         y_t = y
         _, output = attack(
             model = model,
+            normalize = normalize,
             x = x,
             y = y,
             y_t = y_t,
@@ -246,7 +259,7 @@ def eval_epoch(
             n_iters = n_iters
         )
         robust_predictions = output.max(1)[1].cpu().numpy()
-        clean_output = model(normalize_cifar(x)).detach()
+        clean_output = model(normalize(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
         flip_count = np.sum(clean_predictions!=robust_predictions)
         logger.update("robust", output, y, y_t, flip_count)
@@ -266,7 +279,7 @@ def eval_epoch(
     save_epoch_data(epoch,type,eval_epoch_data)
     return logger.result()
 
-def get_rand_target(label, num_classes=10):
+def get_rand_target(label, num_classes):
     target = torch.randint_like(label, 0, num_classes)
     diff = target == label
     while diff.any():
@@ -321,21 +334,27 @@ if __name__ == '__main__':
     # args.lambda_1 = 0.5
     # args.untargeted = 1
     ################
+    num_classes = 10 if args.data=="cifar10" else 100
+    normalize = normalize_cifar if args.data=="cifar10" else normalize_cifar_100
+    print(f"num_classes = {num_classes}")
+    print(f"normalize = {normalize}")
     if args.fname == 'auto':
-        args.fname = 'cifar10_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}'.format(
+        args.fname = "_".join([
+            args.data,
             args.model,
             args.mode,
-            args.untargeted,
-            "ccm" if args.ccm else "",
-            "ccr" if args.ccr else "",
-            "random_target" if args.random_target else "",
-            ",".join(args.adaptive_eps) if args.adaptive_eps else "",
-            f"alpha_{args.pgd_alpha}",
-            f"its_{args.attack_iters}",
-            f"lr_{args.lr_max}",
-            f"lr_{args.lr_schedule}",
-            f"bs_{args.batch_size}"
-        )
+            str(args.untargeted),
+            f"kldiv={args.kldiv}",
+            f"ccm={args.ccm}",
+            f"ccr={args.ccr}",
+            f"rand={args.random_target}",
+            "adapt=" + ",".join(args.adaptive_eps) if args.adaptive_eps else "None",
+            f"alpha={args.pgd_alpha}",
+            f"its={args.attack_iters}",
+            f"lr={args.lr_max}",
+            f"schedule={args.lr_schedule}",
+            f"bs={args.batch_size}"
+        ])
     if args.prefix:
         args.fname = args.prefix + "_" + args.fname
     print(args)
@@ -344,12 +363,12 @@ if __name__ == '__main__':
     eps = args.epsilon / 255.       # 8/255
     alpha = args.pgd_alpha / 255.   # 2/255
     beta = args.beta / 1.           # 6
-    class_eps = torch.ones(10).to(device) * eps
-    class_beta = torch.ones(10).to(device) * (beta/(1+beta))
+    class_eps = torch.ones(num_classes).to(device) * eps
+    class_beta = torch.ones(num_classes).to(device) * (beta/(1+beta))
     iteration = args.attack_iters  # 10
     epochs = args.epochs if args.model == 'PRN' else 100    # 200 epochs
     train_loader, valid_loader, test_loader = get_dataset(
-        dataset = "cifar10",
+        dataset = args.data,
         num_workers_train = args.num_workers_train,
         num_workers_valid = args.num_workers_valid,
         num_workers_test = args.num_workers_test,
@@ -373,7 +392,7 @@ if __name__ == '__main__':
     with open(f'logs/{fname}/config.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
     if args.model == 'PRN':
-        model = PreActResNet18().to(device)
+        model = PreActResNet18(num_classes=num_classes).to(device)
 
     elif args.model == 'WRN':
         model = WRN().to(device)
@@ -381,9 +400,9 @@ if __name__ == '__main__':
         raise ValueError
     
     # init weight averaged model
-    EMA_model = PreActResNet18().to(device) if args.model == 'PRN' else WRN().to(device)
+    EMA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
 
-    FAWA_model = PreActResNet18().to(device) if args.model == 'PRN' else WRN().to(device)
+    FAWA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
 
     EMA_model.eval()
     FAWA_model.eval()
@@ -392,6 +411,10 @@ if __name__ == '__main__':
     
     params = model.parameters()
     opt = torch.optim.SGD(params, lr=args.lr_max, momentum=0.9, weight_decay=5e-4)
+    if args.lr_schedule == "steplr":
+        scheduler = torch.optim.lr_scheduler.StepLR(opt, step_size=10, gamma=0.96)
+    else:
+        scheduler = None
     log_data = [] # Epochs * 7:    Epoch, train_clean, train, valid_clean, valid, test_clean, test
     cw_data = []  # Epochs * 6 * 10:    Epoch, min-{train_clean, train, valid_clean, valid, test_clean, test}
     EMA_log, FAWA_log = [], []
@@ -413,9 +436,14 @@ if __name__ == '__main__':
                 lr = lr_schedule(epoch)
             elif args.lr_schedule == "step4":
                 lr = lr_schedule_new(epoch)
+            elif args.lr_schedule == "steplr":
+                if epoch > 0:
+                    scheduler.step()
+                lr = None
             else:
-                raise RuntimeError(f"lr_schedule not understood: {args.lr_schedule}")
-        opt.param_groups[0].update(lr=lr)
+                raise RuntimeError(f"lr_schedule not understood: '{args.lr_schedule}'.")
+        if lr is not None:
+            opt.param_groups[0].update(lr=lr)
         
         # train
         model.train()
@@ -443,7 +471,7 @@ if __name__ == '__main__':
                         lambd = args.lambda_r
                     else:
                         lambd = args.lambda_c
-                    class_eps += [(np.ones(10) * lambd + scaling) * eps]
+                    class_eps += [(np.ones(num_classes) * lambd + scaling) * eps]
                 # combine eps
                 class_eps = np.stack(class_eps)
                 if args.adaptive_eps_aggr == "avg":
@@ -466,14 +494,14 @@ if __name__ == '__main__':
                 #         train_robust = log_train_results[-1].robust_cw_acc_target
                 class_eps = torch.tensor(class_eps).to(device)
             else:
-                class_eps = torch.ones(10).to(device) * eps
+                class_eps = torch.ones(num_classes).to(device) * eps
         
         # ccr
         if args.ccr and epoch >= args.begin:
-            for i in range(10):
+            for i in range(num_classes):
                 class_beta[i] = (args.lambda_2+train_robust[i]) * beta / (1 + (args.lambda_2+train_robust[i])*beta)
         else:
-            class_beta = torch.ones(10).to(device) * (beta/(1+beta))
+            class_beta = torch.ones(num_classes).to(device) * (beta/(1+beta))
             # going class_beta
 
         # set tau for FAT

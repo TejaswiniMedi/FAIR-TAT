@@ -4,7 +4,8 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import numpy as np
 import os
 
-PATH = 'data/cifar-10-batches-py'
+# PATH = 'data/cifar-10-batches-py'
+PATH = "data"
 def dev(id):
     return f'cuda:{id}'
 
@@ -36,165 +37,173 @@ def get_dataset(
     ):
     if not os.path.exists("data"):
         os.mkdir("data")
-    if dataset == "cifar10":
-        train_transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4, padding_mode="reflect"),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()
-        ])
-        test_transform = transforms.Compose([
-            transforms.ToTensor()
-        ])
-        train_set = datasets.CIFAR10(
+    
+    fn_ds = datasets.CIFAR10 if dataset == "cifar10" else datasets.CIFAR100
+    
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4, padding_mode="reflect"),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor()
+    ])
+    test_transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    
+    train_set = fn_ds(
+        PATH,
+        train = True,
+        download = True,
+        transform = train_transform
+    )
+    valid_set = fn_ds(
+        PATH,
+        train = True,
+        download = True,
+        transform = test_transform
+    )
+    
+    ori_label = torch.tensor(train_set.targets)
+    num_labels = len(np.unique(train_set.targets))
+    # n = 100 # for each classes (2% of 5000)
+    n = int(50_000 / num_labels  / 50)
+    valid_index, train_index = [], []
+    for i in range(num_labels):
+        valid_index_i = (ori_label==i).nonzero()[:n]
+        train_index_i = (ori_label==i).nonzero()[n:]
+        valid_index.append(valid_index_i)
+        train_index.append(train_index_i)
+    valid_index = torch.cat(valid_index, dim=0).flatten()
+    train_index = torch.cat(train_index, dim=0).flatten()
+    print(f"valid_index: {len(valid_index)}.")
+    print(f"train_index: {len(train_index)}.")
+    
+    N = len(train_index)
+    order = np.random.permutation(N)
+    train_index = train_index[order]
+    
+    train_sampler = SubsetRandomSampler(train_index)
+    valid_sampler = SubsetRandomSampler(valid_index)
+    
+    train_loader = torch.utils.data.DataLoader(
+        train_set,
+        batch_size = batch_size_train,
+        shuffle = False,
+        sampler = train_sampler,
+        pin_memory = True,
+        persistent_workers = num_workers_train > 1,
+        num_workers = num_workers_train
+    )
+    valid_loader = torch.utils.data.DataLoader(
+        valid_set,
+        batch_size = batch_size_valid,
+        shuffle = False,
+        sampler = valid_sampler,
+        pin_memory = True,
+        persistent_workers = num_workers_valid > 1,
+        num_workers = num_workers_valid
+    )
+    test_loader = torch.utils.data.DataLoader(
+        fn_ds(
             PATH,
-            train = True,
-            download = True,
-            transform = train_transform
-        )
-        valid_set = datasets.CIFAR10(
-            PATH,
-            train = True,
+            train = False,
             download = True,
             transform = test_transform
-        )
-        ori_label = torch.tensor(train_set.targets)
-        n = 100 # for each classes (2% of 5000)
-        valid_index, train_index = [], []
-        for i in range(10):
-            valid_index_i = (ori_label==i).nonzero()[:n]
-            train_index_i = (ori_label==i).nonzero()[n:]
-            valid_index.append(valid_index_i)
-            train_index.append(train_index_i)
-        valid_index = torch.cat(valid_index, dim=0).flatten()
-        train_index = torch.cat(train_index, dim=0).flatten()
-        
-        N = len(train_index)
-        order = np.random.permutation(N)
-        train_index = train_index[order]
-        
-        train_sampler = SubsetRandomSampler(train_index)
-        valid_sampler = SubsetRandomSampler(valid_index)
-        
-        train_loader = torch.utils.data.DataLoader(
-            train_set,
-            batch_size = batch_size_train,
-            shuffle = False,
-            sampler = train_sampler,
-            pin_memory = True,
-            persistent_workers = num_workers_train > 1,
-            num_workers = num_workers_train
-        )
-        valid_loader = torch.utils.data.DataLoader(
-            valid_set,
-            batch_size = batch_size_valid,
-            shuffle = False,
-            sampler = valid_sampler,
-            pin_memory = True,
-            persistent_workers = num_workers_valid > 1,
-            num_workers = num_workers_valid
-        )
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(
-                PATH,
-                train = False,
-                download = True,
-                transform = test_transform
-            ),
-            batch_size = batch_size_test,
-            shuffle = False,
-            pin_memory = True,
-            persistent_workers = num_workers_test > 1,
-            num_workers = num_workers_test
-        )
-        
-        return train_loader, valid_loader, test_loader
-
-def load_dataset(dataset='cifar10', batch_size=128):
-    if dataset == 'cifar10':
-        transform_ = transforms.Compose([transforms.ToTensor()])
-        train_transform_ = transforms.Compose([
-            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()])
-        train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(PATH, train=True, download=True, transform=train_transform_),
-            batch_size=batch_size, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
-            batch_size=batch_size, shuffle=False)
-
-        return train_loader, test_loader
-    elif dataset == 'cifar100':
-        transform_ = transforms.Compose([transforms.ToTensor()])
-
-        train_transform_ = transforms.Compose([
-            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()])
-        train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(PATH, train=True, download=True, transform=train_transform_),
-            batch_size=batch_size, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(PATH, train=False, download=True, transform=transform_),
-            batch_size=batch_size, shuffle=False)
-
-        return train_loader, test_loader
-
-def load_valid_dataset(dataset='cifar10', batch_size=128):
-    if dataset == 'cifar10':
-        train_loader, valid_loader = torch.load('data/split_dataset.pth')
-
-        # test loader
-        transform_ = transforms.Compose([transforms.ToTensor()])
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
-            batch_size=batch_size, shuffle=False)
-        return train_loader, valid_loader, test_loader
+        ),
+        batch_size = batch_size_test,
+        shuffle = False,
+        pin_memory = True,
+        persistent_workers = num_workers_test > 1,
+        num_workers = num_workers_test
+    )
     
-    elif dataset == 'cifar100':
-        train_loader, valid_loader = torch.load('data/split_dataset_100.pth')
+    return train_loader, valid_loader, test_loader
 
-        # test loader
-        transform_ = transforms.Compose([transforms.ToTensor()])
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(PATH, train=False, download=True, transform=transform_),
-            batch_size=batch_size, shuffle=False)
-        return train_loader, valid_loader, test_loader
+# def load_dataset(dataset='cifar10', batch_size=128):
+#     if dataset == 'cifar10':
+#         transform_ = transforms.Compose([transforms.ToTensor()])
+#         train_transform_ = transforms.Compose([
+#             transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+#             transforms.RandomHorizontalFlip(),
+#             transforms.ToTensor()])
+#         train_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR10(PATH, train=True, download=True, transform=train_transform_),
+#             batch_size=batch_size, shuffle=True)
+#         test_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
+#             batch_size=batch_size, shuffle=False)
 
-def load_cw_dataset(dataset='cifar10', batch_size=128, valid=True):
-    if dataset == 'cifar10':
-        if valid:
-            train_loader, valid_loader = torch.load('data/split_dataset.pth')
-        else:
-            train_transform_ = transforms.Compose([
-            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()])
-            train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(PATH, train=True, download=True, transform=train_transform_),
-            batch_size=batch_size, shuffle=True)
+#         return train_loader, test_loader
+#     elif dataset == 'cifar100':
+#         transform_ = transforms.Compose([transforms.ToTensor()])
+
+#         train_transform_ = transforms.Compose([
+#             transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+#             transforms.RandomHorizontalFlip(),
+#             transforms.ToTensor()])
+#         train_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR100(PATH, train=True, download=True, transform=train_transform_),
+#             batch_size=batch_size, shuffle=True)
+#         test_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR100(PATH, train=False, download=True, transform=transform_),
+#             batch_size=batch_size, shuffle=False)
+
+#         return train_loader, test_loader
+
+# def load_valid_dataset(dataset='cifar10', batch_size=128):
+#     if dataset == 'cifar10':
+#         train_loader, valid_loader = torch.load('data/split_dataset.pth')
+
+#         # test loader
+#         transform_ = transforms.Compose([transforms.ToTensor()])
+#         test_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
+#             batch_size=batch_size, shuffle=False)
+#         return train_loader, valid_loader, test_loader
+    
+#     elif dataset == 'cifar100':
+#         train_loader, valid_loader = torch.load('data/split_dataset_100.pth')
+
+#         # test loader
+#         transform_ = transforms.Compose([transforms.ToTensor()])
+#         test_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR100(PATH, train=False, download=True, transform=transform_),
+#             batch_size=batch_size, shuffle=False)
+#         return train_loader, valid_loader, test_loader
+
+# def load_cw_dataset(dataset='cifar10', batch_size=128, valid=True):
+#     if dataset == 'cifar10':
+#         if valid:
+#             train_loader, valid_loader = torch.load('data/split_dataset.pth')
+#         else:
+#             train_transform_ = transforms.Compose([
+#             transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+#             transforms.RandomHorizontalFlip(),
+#             transforms.ToTensor()])
+#             train_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR10(PATH, train=True, download=True, transform=train_transform_),
+#             batch_size=batch_size, shuffle=True)
         
-        # test loader
-        transform_ = transforms.Compose([transforms.ToTensor()])
-        test_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
-            batch_size=batch_size, shuffle=False)
-        data = torch.cat([x for (x,y) in test_loader], dim=0)
-        label = torch.cat([y for (x,y) in test_loader], dim=0)
+#         # test loader
+#         transform_ = transforms.Compose([transforms.ToTensor()])
+#         test_loader = torch.utils.data.DataLoader(
+#             datasets.CIFAR10(PATH, train=False, download=True, transform=transform_),
+#             batch_size=batch_size, shuffle=False)
+#         data = torch.cat([x for (x,y) in test_loader], dim=0)
+#         label = torch.cat([y for (x,y) in test_loader], dim=0)
 
-        cw_test_loader = []
-        for i in range(10):
-            index = (label==i).nonzero().flatten()
-            loader = []
-            for j in range(10):
-                curr_index = index[j*100:(j+1)*100]
-                loader.append((data[curr_index], label[curr_index]))
-            cw_test_loader.append(loader)
+#         cw_test_loader = []
+#         for i in range(10):
+#             index = (label==i).nonzero().flatten()
+#             loader = []
+#             for j in range(10):
+#                 curr_index = index[j*100:(j+1)*100]
+#                 loader.append((data[curr_index], label[curr_index]))
+#             cw_test_loader.append(loader)
 
-        if valid:
-            return train_loader, valid_loader, cw_test_loader
-        else:
-            return train_loader, cw_test_loader
+#         if valid:
+#             return train_loader, valid_loader, cw_test_loader
+#         else:
+#             return train_loader, cw_test_loader
 
 def weight_average(model, new_model, decay_rate, init=False):
     model.eval()
