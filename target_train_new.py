@@ -7,7 +7,7 @@ import torch
 # import torch.nn.functional as F
 import os
 from tqdm import tqdm
-from Targeted_attack import pgd_loss, cw_pgd_loss #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average
 from model import PreActResNet18
 from model_wrn import WRN
@@ -22,6 +22,7 @@ def get_args():
     parser.add_argument('--lr_max', default=0.1, type=float)
     parser.add_argument('--lr_schedule', default='step3', type=str, choices=["step3", "step4", "steplr"])
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
+    parser.add_argument('--attack_type', default='FGSM', type=str, choices=['PGD', 'FGSM'])
     parser.add_argument('--epsilon', default=8, type=int)
     parser.add_argument('--attack-iters', default=10, type=int)
     parser.add_argument('--pgd-alpha', default=2, type=int)
@@ -343,6 +344,7 @@ if __name__ == '__main__':
             args.data,
             args.model,
             args.mode,
+            args.attack_type,
             str(args.untargeted),
             f"kldiv={args.kldiv}",
             f"ccm={args.ccm}",
@@ -510,9 +512,16 @@ if __name__ == '__main__':
         
         if args.mode == 'AT':
             if args.ccm:
-                attack = cw_pgd_loss
+                if args.attack_type == 'FGSM':
+                    attack = cw_fgsm_loss
+                elif args.attack_type == 'PGD':
+                    attack = cw_pgd_loss
             else:
-                attack = pgd_loss
+                if args.attack_type == 'FGSM':
+                    attack = fgsm_loss
+                elif args.attack_type == 'PGD':
+                    attack = pgd_loss
+                    
         elif args.mode == 'TRADES':
             if args.ccm:
                 attack = cw_trades_loss
