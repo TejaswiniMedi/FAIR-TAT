@@ -203,6 +203,35 @@ def cw_pgd_loss(
     robust_output = model(normalize(x + delta))
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
+            
+def cw_fgsm_loss(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        cw_eps,
+        beta,
+        alpha,
+        attack_mode_UT,
+        n_iters = 10    
+    ):
+    batch_eps = cw_eps[y]
+    adv_images = cw_attack_fgsm(
+         model = model,
+        normalize = normalize,
+        x = x,
+        y = y,
+        y_t = y_t,
+        eps = batch_eps,
+        alpha = alpha,
+        attack_mode_UT = attack_mode_UT,
+        n_iters = n_iters,
+        norm = 'Linf'
+    )
+    robust_output = model(normalize(adv_images))
+    criterion = nn.CrossEntropyLoss()
+    return criterion(robust_output, y), robust_output.clone().detach() 
 
 
 
