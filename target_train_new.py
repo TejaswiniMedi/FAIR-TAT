@@ -4,22 +4,28 @@ import argparse
 import pandas as pd
 import torch
 # import torch.nn as nn
+# import torch.nn.functional as F
 import os
 from tqdm import tqdm
-from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
-from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average
+from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss  #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average,load_txt, CIFAR10C
 from model import PreActResNet18
 from model_wrn import WRN
 from easydict import EasyDict as edict
 from torch.optim.lr_scheduler import StepLR
+import argparse
 import glob
+import numpy as np
+import os
 import pprint
+import torch
 import torchvision
 import tqdm
 from glob import glob
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
+from tqdm import tqdm
 
 def get_args():
     parser = argparse.ArgumentParser()
