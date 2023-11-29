@@ -116,7 +116,13 @@ class CW_log():
                 fn_by_class = np.zeros(num_classes)
             )
         )
-    
+        
+    def reset(self,which,num_classes=10):
+        if which == "corruptions":
+            d = getattr(self, which)
+            d.N = 0
+            d.gt.correct = 0
+            d.gt.tp_by_class = np.zeros(num_classes)
     
     def update(self, which, output, y, y_t,flips):
         assert which in ["clean", "robust", "corruptions"]
@@ -347,8 +353,9 @@ def eval_corruptions(model):
                     z = model(x)
                     loss = F.cross_entropy(z, y)
                     logger.update("corruptions", z, y, y_t, flips=0)
-            corruptions = {f"{cname}" : logger.result_corruptions()}
-            list_corruptions.append(corruptions)
+                corruptions = {f"{cname}" : logger.result_corruptions()}
+                list_corruptions.append(corruptions)
+                logger.reset("corruptions")
     return list_corruptions
 
 def get_rand_target(label, num_classes):
