@@ -230,10 +230,8 @@ def load_txt(path :str) -> list:
     return [line.rstrip('\n') for line in open(path)]
 
 
-corruptions = load_txt('/home/tejaswini/Experiments_Teja/Targeted-Adversarial-Training/corruptions.txt') # path to corruptions
-
 class CIFAR10C(datasets.VisionDataset):
-    def __init__(self, root :str, name :str,
+    def __init__(self, root :str, name :str,corruptions:str,
                  transform=None, target_transform=None):
         assert name in corruptions
         super(CIFAR10C, self).__init__(
