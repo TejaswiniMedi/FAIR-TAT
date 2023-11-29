@@ -4,7 +4,6 @@ import argparse
 import pandas as pd
 import torch
 # import torch.nn as nn
-# import torch.nn.functional as F
 import os
 from tqdm import tqdm
 from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
@@ -12,6 +11,15 @@ from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight
 from model import PreActResNet18
 from model_wrn import WRN
 from easydict import EasyDict as edict
+from torch.optim.lr_scheduler import StepLR
+import glob
+import pprint
+import torchvision
+import tqdm
+from glob import glob
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from torchvision import transforms, datasets
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -50,6 +58,7 @@ def get_args():
     parser.add_argument('--num_workers_train', default=8, type=int)
     parser.add_argument('--num_workers_valid', default=4, type=int)
     parser.add_argument('--num_workers_test', default=4, type=int)
+    parser.add_argument('--corruptions_path', default='/home/tejaswini/Experiments_Teja/Targeted-Adversarial-Training/corruptions.txt',type=str)
     return parser.parse_args()
 
 class CW_log():
@@ -86,9 +95,25 @@ class CW_log():
                 fn_by_class = np.zeros(num_classes)
             )
         )
+        self.corruptions = edict(
+            N = 0,
+            gt = edict(
+                correct = 0,
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
+            ),
+            target = edict(
+                correct = 0,
+                fp_by_class = np.zeros(num_classes),
+                tp_by_class = np.zeros(num_classes),
+                fn_by_class = np.zeros(num_classes)
+            )
+        )
+    
     
     def update(self, which, output, y, y_t,flips):
-        assert which in ["clean", "robust"]
+        assert which in ["clean", "robust", "corruptions"]
         d = getattr(self, which)
         
         d.N += len(output)
@@ -147,6 +172,11 @@ class CW_log():
             robust_cw_cfns_gt = self.robust.gt.fn_by_class / (self.robust.N - self.robust.gt.correct),
             robust_cw_cfns_target = self.robust.target.fn_by_class / (self.robust.N - self.robust.target.correct),
             flip_score = self.flip_count / (self.robust.N)
+        )
+    def result_corruptions(self):
+        return   edict(
+            acc_gt = self.corruptions.gt.correct / self.corruptions.N,
+            cw_acc_gt = self.corruptions.gt.tp_by_class * self.class_num / self.corruptions.N
         )
 
 ##########
@@ -279,6 +309,41 @@ def eval_epoch(
         }
     save_epoch_data(epoch,type,eval_epoch_data)
     return logger.result()
+
+def eval_corruptions(model):
+    CORRUPTIONS = load_txt(args.corruptions_path)
+    MEAN = [0.49139968, 0.48215841, 0.44653091]
+    STD  = [0.24703223, 0.24348513, 0.26158784]
+    model.to(device)
+    model.eval()
+    logger = CW_log(num_classes=num_classes)
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD)
+    ])
+    corruptions = CORRUPTIONS
+    accs = dict()
+    list_corruptions = []
+    for ci, cname in enumerate(corruptions):
+            data_root = 'data'
+            # load dataset
+            dataset = CIFAR10C(
+                    os.path.join(data_root, 'cifar10-c'),
+                    cname, corruptions=CORRUPTIONS, transform=transform
+                )
+            corruption_loader = DataLoader(dataset, batch_size=1024,
+                                shuffle=False, num_workers=4)
+            with torch.no_grad():
+                for itr, (x, y) in enumerate(corruption_loader):
+                    x = x.to(device, non_blocking=True)
+                    y = y.to(device, dtype=torch.int64, non_blocking=True)
+                    y_t = y
+                    z = model(x)
+                    loss = F.cross_entropy(z, y)
+                    logger.update("corruptions", z, y, y_t, flips=0)
+            corruptions = {f"{cname}" : logger.result_corruptions()}
+            list_corruptions.append(corruptions)
+    return list_corruptions
 
 def get_rand_target(label, num_classes):
     target = torch.randint_like(label, 0, num_classes)
@@ -646,6 +711,12 @@ if __name__ == '__main__':
         for k, v in FAWA_result.items():
             print(k)
             print(v)
+
+        corruption_result =  eval_corruptions(model)
+        print()
+        print("########## Corruption Result ##########")
+        for i in corruption_result:
+            print(i)
         
         # log result
         log_train_results += [train_result]
