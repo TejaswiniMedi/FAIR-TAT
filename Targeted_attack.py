@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
+from auto_pgd import apgd
 
 def attack_pgd(
         model,
@@ -39,7 +40,56 @@ def attack_pgd(
         delta.grad.zero_()
     
     return delta.detach()
+            
+def attack_fgsm(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        n_iters,
+        dataset = 'cifar10',
+        norm = 'Linf'   
+    ):
+    images = x.clone().detach().to(x.device)
+    labels = y.clone().detach().to(y.device)
+    target_labels = y_t.clone().detach().to(y_t.device)
+    loss = nn.CrossEntropyLoss()
+    x.requires_grad = True
+    outputs = model(normalize(x))
+    model.zero_grad()
+    cost = loss(outputs, labels)
+    cost.backward()
+    adv_images = images + eps * x.grad.sign()
+    adv_images = torch.clamp(adv_images, min=0, max=1).detach()
+    return adv_images 
 
+def attack_apgd(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        n_iters,
+        dataset = 'cifar10',
+        norm = 'Linf'
+    ):
+    adv = apgd(model = model,inputs = x,labels=y,eps = eps, norm= float('inf'),targeted = False, n_iter = n_iters,
+         n_restarts= 1,
+         loss_function= 'dlr',
+         eot_iter = 1,
+         rho = 0.75,
+         use_large_reps = False,
+         use_rs = True,
+         best_loss = False) 
+    return adv
+            
 def cw_attack_pgd(
         model,
         normalize,
@@ -119,7 +169,29 @@ def cw_attack_fgsm(
     cost.backward()
     adv_images = images + eps * x.grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
-    return adv_images  
+    return adv_images 
+
+def cw_attack_apgd(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        eps,
+        alpha,
+        attack_mode_UT,
+        n_iters,
+        norm = 'Linf'
+    ):
+    adv = apgd(model = model,inputs = x,labels=y_t,eps = eps, norm= float('inf'),targeted =  attack_mode_UT, n_iter = n_iters,
+         n_restarts= 1,
+         loss_function= 'dlr',
+         eot_iter = 1,
+         rho = 0.75,
+         use_large_reps = False,
+         use_rs = True,
+         best_loss = False) 
+    return adv
 
 def pgd_loss(
         model,
@@ -172,6 +244,33 @@ def fgsm_loss(
         n_iters = n_iters
     )
     robust_output = model(normalize(adv_imgs))
+    criterion = nn.CrossEntropyLoss()
+    return criterion(robust_output, y), robust_output.clone().detach()
+
+def apgd_loss(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        eps,
+        beta,
+        alpha,
+        n_iters = 10,
+        **kwargs
+    ):
+    x_adv = attack_apgd(
+        model = model,
+        normalize = normalize,
+        x = x,
+        y = y,
+        y_t = y_t,
+        eps = eps,
+        alpha = alpha,
+        beta = beta,
+        n_iters = n_iters
+    )
+    robust_output = model(normalize(x_adv))
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach()
 
@@ -232,6 +331,35 @@ def cw_fgsm_loss(
     robust_output = model(normalize(adv_images))
     criterion = nn.CrossEntropyLoss()
     return criterion(robust_output, y), robust_output.clone().detach() 
+
+def cw_apgd_loss(
+        model,
+        normalize,
+        x,
+        y,
+        y_t,
+        cw_eps,
+        beta,
+        alpha,
+        attack_mode_UT,
+        n_iters = 10
+    ):
+    batch_eps = cw_eps[y]
+    x_adv = cw_attack_apgd(
+        model = model,
+        normalize = normalize,
+        x = x,
+        y = y,
+        y_t = y_t,
+        eps = batch_eps,
+        alpha = alpha,
+        attack_mode_UT = attack_mode_UT,
+        n_iters = n_iters,
+        norm = 'Linf'
+    )
+    robust_output = model(normalize(x_adv))
+    criterion = nn.CrossEntropyLoss()
+    return criterion(robust_output, y), robust_output.clone().detach()
 
 
 
