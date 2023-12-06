@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument('--lr_max', default=0.1, type=float)
     parser.add_argument('--lr_schedule', default='step3', type=str, choices=["step3", "step4", "steplr"])
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
-    parser.add_argument('--attack_type', default='FGSM', type=str, choices=['PGD', 'FGSM'])
+    parser.add_argument('--attack_type', default='APGD', type=str, choices=['PGD', 'FGSM','APGD'])
     parser.add_argument('--epsilon', default=8, type=int)
     parser.add_argument('--attack-iters', default=10, type=int)
     parser.add_argument('--pgd-alpha', default=2, type=int)
@@ -594,11 +594,15 @@ if __name__ == '__main__':
                     attack = cw_fgsm_loss
                 elif args.attack_type == 'PGD':
                     attack = cw_pgd_loss
+                elif args.attack_type == 'APGD':
+                    attack = cw_apgd_loss
             else:
                 if args.attack_type == 'FGSM':
                     attack = fgsm_loss
                 elif args.attack_type == 'PGD':
                     attack = pgd_loss
+                elif args.attack_type == 'APGD':
+                    attack = apgd_loss
                     
         elif args.mode == 'TRADES':
             if args.ccm:
@@ -648,7 +652,7 @@ if __name__ == '__main__':
             model = model,
             loader = test_loader,
             device = device,
-            attack = pgd_loss,
+            attack = apgd_loss,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -666,7 +670,7 @@ if __name__ == '__main__':
             model = model,
             loader = valid_loader,
             device = device,
-            attack = pgd_loss,
+            attack = apgd_loss,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -685,7 +689,7 @@ if __name__ == '__main__':
             model = EMA_model,
             loader = test_loader,
             device = device,
-            attack = pgd_loss,
+            attack = apgd_loss,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -712,7 +716,7 @@ if __name__ == '__main__':
             model = FAWA_model,
             loader = test_loader,
             device = device,
-            attack = pgd_loss,
+            attack = apgd_loss,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
