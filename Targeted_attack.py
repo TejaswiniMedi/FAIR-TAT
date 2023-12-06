@@ -186,7 +186,17 @@ def cw_attack_apgd(
         n_iters,
         norm = 'Linf'
     ):
-    adv = apgd(model = model,inputs = x,labels=y_t,eps = eps, norm= float('inf'),targeted =  attack_mode_UT, n_iter = n_iters,
+    if attack_mode_UT:
+        adv = apgd(model = model,inputs = x,labels=y,eps = eps, norm= float('inf'),targeted =  attack_mode_UT, n_iter = 100,
+         n_restarts= 1,
+         loss_function= 'dlr',
+         eot_iter = 1,
+         rho = 0.75,
+         use_large_reps = False,
+         use_rs = True,
+         best_loss = False) 
+    else:
+        adv = apgd(model = model,inputs = x,labels=y_t,eps = eps, norm= float('inf'),targeted =  attack_mode_UT, n_iter = 100,
          n_restarts= 1,
          loss_function= 'dlr',
          eot_iter = 1,
