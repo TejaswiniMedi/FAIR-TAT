@@ -392,6 +392,7 @@ def _apgd(model: nn.Module,
     x_adv.requires_grad_()
     grad = torch.zeros_like(inputs)
     for _ in range(eot_iter):
+        x_adv= x_adv.float()
         logits = model(x_adv)
         loss_indiv = multiplier * criterion_indiv(logits, labels)
         grad.add_(torch.autograd.grad(loss_indiv.sum(), x_adv, only_inputs=True)[0])
@@ -474,6 +475,7 @@ def _apgd(model: nn.Module,
         x_adv.requires_grad_(True)
         grad.zero_()
         for _ in range(eot_iter):
+            x_adv= x_adv.float()
             logits = model(x_adv)
             loss_indiv = multiplier * criterion_indiv(logits, labels)
             grad.add_(torch.autograd.grad(loss_indiv.sum(), x_adv, only_inputs=True)[0])
