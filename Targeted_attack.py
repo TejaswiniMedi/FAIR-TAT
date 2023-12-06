@@ -164,11 +164,14 @@ def cw_attack_fgsm(
     model.zero_grad()
     if attack_mode_UT:
         cost = loss(outputs, labels)
+        cost.backward()
+        adv_images = images + eps * x.grad.sign()
+        adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     else:
-        cost = -loss(outputs, target_labels)
-    cost.backward()
-    adv_images = images + eps * x.grad.sign()
-    adv_images = torch.clamp(adv_images, min=0, max=1).detach()
+        cost = loss(outputs, target_labels)
+        cost.backward()
+        adv_images = images - eps * x.grad.sign()
+        adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
 
 def cw_attack_apgd(
