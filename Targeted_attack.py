@@ -80,7 +80,7 @@ def attack_apgd(
         dataset = 'cifar10',
         norm = 'Linf'
     ):
-    adv = apgd(model = model,inputs = x,labels=y,eps = eps, norm= float('inf'),targeted = False, n_iter = n_iters,
+    adv = apgd(model = model,inputs = x,labels=y,eps = eps, norm= float('inf'),targeted = False, n_iter = 100,
          n_restarts= 1,
          loss_function= 'dlr',
          eot_iter = 1,
