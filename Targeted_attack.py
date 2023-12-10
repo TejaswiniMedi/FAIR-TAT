@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from auto_pgd import apgd
+from apgd import apgd
 
 def attack_pgd(
         model,
