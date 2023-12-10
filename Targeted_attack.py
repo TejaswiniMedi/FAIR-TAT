@@ -54,17 +54,17 @@ def attack_fgsm(
         dataset = 'cifar10',
         norm = 'Linf'   
     ):
-    images = x.clone().detach().to(x.device)
+    # images = x.clone().detach().to(x.device)
     labels = y.clone().detach().to(y.device)
-    target_labels = y_t.clone().detach().to(y_t.device)
+    # target_labels = y_t.clone().detach().to(y_t.device)
     loss = nn.CrossEntropyLoss()
     x.requires_grad = True
     outputs = model(normalize(x))
     cost = loss(outputs, labels)    
     model.zero_grad()
     cost.backward()
-    data_grad = x.grad.data
-    adv_images = images + eps * data_grad.sign()
+    x_grad = x.grad.data
+    adv_images = x + eps * x_grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
 
@@ -156,7 +156,7 @@ def cw_attack_fgsm(
     for sample in range(len(x)):
         base[sample] *= eps[sample]
     eps = base.clone().to(x.device)
-    images = x.clone().detach().to(x.device)
+    # images = x.clone().detach().to(x.device)
     labels = y.clone().detach().to(y.device)
     target_labels = y_t.clone().detach().to(y_t.device)
     loss = nn.CrossEntropyLoss()
@@ -166,15 +166,15 @@ def cw_attack_fgsm(
         cost = loss(outputs, labels)
         model.zero_grad()
         cost.backward()
-        data_grad = x.grad.data
-        adv_images = images + eps * x.grad.sign()
+        x_grad = x.grad.data
+        adv_images = x + eps * x_grad.sign()
         adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     else:
         cost = loss(outputs, target_labels)
         model.zero_grad()
         cost.backward()
-        data_grad = x.grad.data
-        adv_images = images - eps * data_grad.sign()
+        x_grad = x.grad.data
+        adv_images = x - eps * x_grad.sign()
         adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
 
