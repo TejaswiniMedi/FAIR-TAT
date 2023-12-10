@@ -60,10 +60,11 @@ def attack_fgsm(
     loss = nn.CrossEntropyLoss()
     x.requires_grad = True
     outputs = model(normalize(x))
+    cost = loss(outputs, labels)    
     model.zero_grad()
-    cost = loss(outputs, labels)
     cost.backward()
-    adv_images = images + eps * x.grad.sign()
+    data_grad = x.grad.data
+    adv_images = images + eps * data_grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
 
@@ -161,16 +162,19 @@ def cw_attack_fgsm(
     loss = nn.CrossEntropyLoss()
     x.requires_grad = True
     outputs = model(normalize(x))
-    model.zero_grad()
     if attack_mode_UT:
         cost = loss(outputs, labels)
+        model.zero_grad()
         cost.backward()
+        data_grad = x.grad.data
         adv_images = images + eps * x.grad.sign()
         adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     else:
         cost = loss(outputs, target_labels)
+        model.zero_grad()
         cost.backward()
-        adv_images = images - eps * x.grad.sign()
+        data_grad = x.grad.data
+        adv_images = images - eps * data_grad.sign()
         adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
 
