@@ -54,19 +54,28 @@ def attack_fgsm(
         dataset = 'cifar10',
         norm = 'Linf'   
     ):
-    # images = x.clone().detach().to(x.device)
-    labels = y.clone().detach().to(y.device)
-    # target_labels = y_t.clone().detach().to(y_t.device)
+    x = x.clone().detach().to(x.device)
+    y = y.clone().detach().to(x.device)
+
+    #if self.targeted:
+     #   target_labels = self.get_target_label(images, labels)
+
     loss = nn.CrossEntropyLoss()
+
     x.requires_grad = True
     outputs = model(normalize(x))
-    cost = loss(outputs, labels)    
-    model.zero_grad()
-    cost.backward()
-    x_grad = x.grad.data
-    adv_images = x + eps * x_grad.sign()
+
+    cost = loss(outputs, y)
+
+    # Update adversarial images
+    grad = torch.autograd.grad(
+            cost, x, retain_graph=False, create_graph=False
+        )[0]
+
+    adv_images = x + eps * grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
-    return adv_images 
+
+    return adv_images
 
 def attack_apgd(
         model,
@@ -156,27 +165,31 @@ def cw_attack_fgsm(
     for sample in range(len(x)):
         base[sample] *= eps[sample]
     eps = base.clone().to(x.device)
-    # images = x.clone().detach().to(x.device)
-    labels = y.clone().detach().to(y.device)
-    target_labels = y_t.clone().detach().to(y_t.device)
+    x = x.clone().detach().to(x.device)
+    y = y.clone().detach().to(x.device)
+    y_t = y_t.clone().detach().to(x.device)
+    if not attack_mode_UT:
+        target_labels = y_t
     loss = nn.CrossEntropyLoss()
+
     x.requires_grad = True
     outputs = model(normalize(x))
-    if attack_mode_UT:
-        cost = loss(outputs, labels)
-        model.zero_grad()
-        cost.backward()
-        x_grad = x.grad.data
-        adv_images = x + eps * x_grad.sign()
-        adv_images = torch.clamp(adv_images, min=0, max=1).detach()
+
+    # Calculate loss
+    if not attack_mode_UT:
+            cost = -loss(outputs, target_labels)
     else:
-        cost = loss(outputs, target_labels)
-        model.zero_grad()
-        cost.backward()
-        x_grad = x.grad.data
-        adv_images = x - eps * x_grad.sign()
-        adv_images = torch.clamp(adv_images, min=0, max=1).detach()
+            cost = loss(outputs, y)
+
+    # Update adversarial images
+    grad = torch.autograd.grad(
+            cost, x, retain_graph=False, create_graph=False
+        )[0]
+
+    adv_images = x + eps * grad.sign()
+    adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
+  
 
 def cw_attack_apgd(
         model,
