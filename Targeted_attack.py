@@ -56,25 +56,16 @@ def attack_fgsm(
     ):
     x = x.clone().detach().to(x.device)
     y = y.clone().detach().to(x.device)
-
-    #if self.targeted:
-     #   target_labels = self.get_target_label(images, labels)
-
     loss = nn.CrossEntropyLoss()
-
     x.requires_grad = True
     outputs = model(normalize(x))
-
     cost = loss(outputs, y)
-
     # Update adversarial images
     grad = torch.autograd.grad(
             cost, x, retain_graph=False, create_graph=False
         )[0]
-
     adv_images = x + eps * grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
-
     return adv_images
 
 def attack_apgd(
@@ -171,21 +162,17 @@ def cw_attack_fgsm(
     if not attack_mode_UT:
         target_labels = y_t
     loss = nn.CrossEntropyLoss()
-
     x.requires_grad = True
     outputs = model(normalize(x))
-
     # Calculate loss
     if not attack_mode_UT:
             cost = -loss(outputs, target_labels)
     else:
             cost = loss(outputs, y)
-
     # Update adversarial images
     grad = torch.autograd.grad(
             cost, x, retain_graph=False, create_graph=False
         )[0]
-
     adv_images = x + eps * grad.sign()
     adv_images = torch.clamp(adv_images, min=0, max=1).detach()
     return adv_images 
