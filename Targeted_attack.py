@@ -166,9 +166,9 @@ def cw_attack_fgsm(
     outputs = model(normalize(x))
     # Calculate loss
     if not attack_mode_UT:
-            cost = -loss(outputs, target_labels)
+        cost = -loss(outputs, target_labels)
     else:
-            cost = loss(outputs, y)
+        cost = loss(outputs, y)
     # Update adversarial images
     grad = torch.autograd.grad(
             cost, x, retain_graph=False, create_graph=False
