@@ -592,17 +592,23 @@ if __name__ == '__main__':
             if args.ccm:
                 if args.attack_type == 'FGSM':
                     attack = cw_fgsm_loss
+                    attack_eval = fgsm_loss
                 elif args.attack_type == 'PGD':
                     attack = cw_pgd_loss
+                    attack_eval = pgd_loss
                 elif args.attack_type == 'APGD':
                     attack = cw_apgd_loss
+                    attack_eval = apgd_loss
             else:
                 if args.attack_type == 'FGSM':
                     attack = fgsm_loss
+                    attack_eval = attack
                 elif args.attack_type == 'PGD':
                     attack = pgd_loss
+                    attack_eval = attack
                 elif args.attack_type == 'APGD':
                     attack = apgd_loss
+                    attack_eval = attack
                     
         elif args.mode == 'TRADES':
             if args.ccm:
@@ -652,7 +658,7 @@ if __name__ == '__main__':
             model = model,
             loader = test_loader,
             device = device,
-            attack = apgd_loss,
+            attack = attack_eval,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -670,7 +676,7 @@ if __name__ == '__main__':
             model = model,
             loader = valid_loader,
             device = device,
-            attack = apgd_loss,
+            attack = attack_eval,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -689,7 +695,7 @@ if __name__ == '__main__':
             model = EMA_model,
             loader = test_loader,
             device = device,
-            attack = apgd_loss,
+            attack = attack_eval,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
@@ -716,7 +722,7 @@ if __name__ == '__main__':
             model = FAWA_model,
             loader = test_loader,
             device = device,
-            attack = apgd_loss,
+            attack = attack_eval,
             eps = 8./255.,
             beta = beta,
             alpha = 2./255.,
