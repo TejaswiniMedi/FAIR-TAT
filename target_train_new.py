@@ -471,19 +471,37 @@ if __name__ == '__main__':
         os.mkdir('logs/'+args.fname)
     with open(f'logs/{fname}/config.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
+        
+    mean = [0.49139968, 0.48215841, 0.44653091]
+    std  = [0.24703223, 0.24348513, 0.26158784]
     if args.model == 'PRN':
         model = PreActResNet18(num_classes=num_classes).to(device)
+        model = torch.nn.Sequential(
+        torchvision.transforms.Normalize(mean, std),
+        model
+        )
 
     elif args.model == 'WRN':
         model = WRN().to(device)
+        model = torch.nn.Sequential(
+        torchvision.transforms.Normalize(mean, std),
+        model
+        )
     else:
         raise ValueError
     
     # init weight averaged model
     EMA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
+    EMA_model = torch.nn.Sequential(
+        torchvision.transforms.Normalize(mean, std),
+        EMA_model
+        )
 
     FAWA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
-
+    FAWA_model = torch.nn.Sequential(
+        torchvision.transforms.Normalize(mean, std),
+        FAWA_model
+        )
     EMA_model.eval()
     FAWA_model.eval()
     # print(EMA_model, FAWA_model)  both models are PreActResNet18
