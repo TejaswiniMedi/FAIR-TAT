@@ -31,10 +31,12 @@ mu_100 = torch.tensor(cifar100_mean).view(3,1,1)
 std_100 = torch.tensor(cifar100_std).view(3,1,1)
 
 def normalize_cifar(x):
-    return (x - mu.to(x.device))/(std.to(x.device))
+    #return (x - mu.to(x.device))/(std.to(x.device))
+    return x
 
 def normalize_cifar_100(x):
-    return (x - mu_100.to(x.device))/(std_100.to(x.device))
+    #return (x - mu_100.to(x.device))/(std_100.to(x.device))
+    return x
 
 def get_dataset(
         dataset = "cifar10",
