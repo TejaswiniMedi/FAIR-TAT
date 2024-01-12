@@ -11,6 +11,7 @@ from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss, apgd
 from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average,load_txt, CIFAR10C
 from model import PreActResNet18
 from model_wrn import WRN
+from model_cait import cait
 from easydict import EasyDict as edict
 from torch.optim.lr_scheduler import StepLR
 import argparse
@@ -290,17 +291,20 @@ def eval_epoch(
         x, y = x.to(device), y.to(device)
         #y_t = torch.randint(0,10,(y.shape[0],)).cuda()  #random target
         y_t = y
-        _, output = attack(
-            model = model,
-            normalize = normalize,
-            x = x,
-            y = y,
-            y_t = y_t,
-            eps = eps,
-            beta = beta,
-            alpha = alpha,
-            n_iters = n_iters
-        )
+        #_, output = attack(
+        #    model = model,
+        #    normalize = normalize,
+        #    x = x,
+        #    y = y,
+        #    y_t = y_t,
+        #    eps = eps,
+        #    beta = beta,
+        #    alpha = alpha,
+        #    n_iters = n_iters
+        #)
+        attack = torchattacks.PGD(model, eps=8/255, alpha=2/255, steps=10, random_start=True)
+        adv_imgs = attack(x,y)
+        output = model(adv_imgs)
         robust_predictions = output.max(1)[1].cpu().numpy()
         clean_output = model(normalize(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
