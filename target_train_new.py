@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument('--data', type=str, default="cifar10", choices=["cifar10", "cifar100"])
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--epochs', default=350, type=int)
-    parser.add_argument('--model', default='PRN', type=str, choices=['PRN', 'WRN']) #
+    parser.add_argument('--model', default='PRN', type=str, choices=['PRN', 'WRN','cait']) #
     parser.add_argument('--lr_max', default=0.1, type=float)
     parser.add_argument('--lr_schedule', default='step3', type=str, choices=["step3", "step4", "steplr"])
     parser.add_argument('--mode', default='TRADES', type=str, choices=['AT', 'TRADES', 'FAT'])
@@ -507,7 +507,7 @@ if __name__ == '__main__':
         raise ValueError
     
     # init weight averaged model
-    if args.model = 'cait':
+    if args.model == 'cait':
         EMA_model = cait(num_classes=num_classes).to(device)
     else:
         EMA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN(num_classes=num_classes).to(device)
@@ -515,7 +515,7 @@ if __name__ == '__main__':
         torchvision.transforms.Normalize(mean, std),
         EMA_model
         )
-    if args.model = 'cait':
+    if args.model == 'cait':
         FAWA_model = cait(num_classes=num_classes).to(device)
     else:
         FAWA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN(num_classes=num_classes).to(device)
