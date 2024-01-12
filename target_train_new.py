@@ -335,7 +335,7 @@ def eval_corruptions(model):
     logger = CW_log(num_classes=num_classes)
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(MEAN, STD)
+       # transforms.Normalize(MEAN, STD)
     ])
     corruptions = CORRUPTIONS
     accs = dict()
@@ -450,7 +450,7 @@ if __name__ == '__main__':
     class_eps = torch.ones(num_classes).to(device) * eps
     class_beta = torch.ones(num_classes).to(device) * (beta/(1+beta))
     iteration = args.attack_iters  # 10
-    epochs = args.epochs if args.model == 'PRN' else 100    # 200 epochs
+    epochs = args.epochs if args.model == 'PRN' else 200    # 200 epochs
     train_loader, valid_loader, test_loader = get_dataset(
         dataset = args.data,
         num_workers_train = args.num_workers_train,
@@ -476,8 +476,13 @@ if __name__ == '__main__':
     with open(f'logs/{fname}/config.json', 'w') as f:
         json.dump(vars(args), f, indent=4)
         
-    mean = [0.49139968, 0.48215841, 0.44653091]
-    std  = [0.24703223, 0.24348513, 0.26158784]
+    if args.data == 'cifar10':
+        mean = (0.49139968, 0.48215841, 0.44653091)
+        std  = (0.24703223, 0.24348513, 0.26158784)
+    elif args.data == 'cifar100':
+        mean = (0.5071, 0.4867, 0.4408)
+        std =  (0.2675, 0.2565, 0.2761)
+        
     if args.model == 'PRN':
         model = PreActResNet18(num_classes=num_classes).to(device)
         model = torch.nn.Sequential(
@@ -486,7 +491,14 @@ if __name__ == '__main__':
         )
 
     elif args.model == 'WRN':
-        model = WRN().to(device)
+        model = WRN(num_classes=num_classes).to(device)
+        model = torch.nn.Sequential(
+        torchvision.transforms.Normalize(mean, std),
+        model
+        )
+        
+    elif args.model == 'cait':
+        model = cait(num_classes=num_classes)
         model = torch.nn.Sequential(
         torchvision.transforms.Normalize(mean, std),
         model
@@ -495,19 +507,25 @@ if __name__ == '__main__':
         raise ValueError
     
     # init weight averaged model
-    EMA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
+    if args.model = 'cait':
+        EMA_model = cait(num_classes=num_classes).to(device)
+    else:
+        EMA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN(num_classes=num_classes).to(device)
     EMA_model = torch.nn.Sequential(
         torchvision.transforms.Normalize(mean, std),
         EMA_model
         )
-
-    FAWA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN().to(device)
+    if args.model = 'cait':
+        FAWA_model = cait(num_classes=num_classes).to(device)
+    else:
+        FAWA_model = PreActResNet18(num_classes=num_classes).to(device) if args.model == 'PRN' else WRN(num_classes=num_classes).to(device)
     FAWA_model = torch.nn.Sequential(
         torchvision.transforms.Normalize(mean, std),
         FAWA_model
         )
     EMA_model.eval()
     FAWA_model.eval()
+    
     # print(EMA_model, FAWA_model)  both models are PreActResNet18
     SEAT_init = False
     
@@ -807,3 +825,7 @@ if __name__ == '__main__':
             if index >= save_threshold[2] - 0.02 or epoch >= args.epochs-5:
                 torch.save(FAWA_model.state_dict(), f'models/{args.fname}/FAWA_{epoch}.pth')
                 save_threshold[2] = max(save_threshold[2], index)
+                
+    torch.save(model.state_dict(), f'models/{args.fname}/{epoch}.pth')
+    torch.save(EMA_model.state_dict(), f'models/{args.fname}/EMA_{epoch}.pth')
+    torch.save(FAWA_model.state_dict(), f'models/{args.fname}/FAWA_{epoch}.pth')    
