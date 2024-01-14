@@ -442,7 +442,8 @@ if __name__ == '__main__':
             f"its={args.attack_iters}",
             f"lr={args.lr_max}",
             f"schedule={args.lr_schedule}",
-            f"bs={args.batch_size}"
+            f"bs={args.batch_size}",
+            f"seed={args.seed}"
         ])
     if args.prefix:
         args.fname = args.prefix + "_" + args.fname
