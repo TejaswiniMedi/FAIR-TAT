@@ -27,6 +27,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms, datasets
 from tqdm import tqdm
+import torchattacks
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -65,7 +66,8 @@ def get_args():
     parser.add_argument('--num_workers_train', default=8, type=int)
     parser.add_argument('--num_workers_valid', default=4, type=int)
     parser.add_argument('--num_workers_test', default=4, type=int)
-    parser.add_argument('--corruptions_path', default='/home/tejaswini/Experiments_Teja/Targeted-Adversarial-Training/corruptions.txt',type=str)
+    parser.add_argument('--corruptions_path', default='./corruptions.txt',type=str)
+    parser.add_argument('--seed',default=0,type=float)
     return parser.parse_args()
 
 class CW_log():
@@ -417,6 +419,9 @@ if __name__ == '__main__':
     # args.lambda_1 = 0.5
     # args.untargeted = 1
     ################
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
     num_classes = 10 if args.data=="cifar10" else 100
     normalize = normalize_cifar if args.data=="cifar10" else normalize_cifar_100
     print(f"num_classes = {num_classes}")
