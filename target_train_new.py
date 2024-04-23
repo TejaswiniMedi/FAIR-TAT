@@ -57,7 +57,7 @@ def get_args():
     parser.add_argument('--lambda-2', default=0.5, type=float)
     parser.add_argument('--lambda-c', default=1.5, type=float)
     parser.add_argument('--lambda-r', default=1.5, type=float)
-    parser.add_argument('--kldiv', default=2.0, type=float)
+    parser.add_argument('--kldiv', default=0.0, type=float)
     parser.add_argument('--begin', default=1, type=int)
     parser.add_argument('--decay-rate', default=0.88 ,type=float)
     parser.add_argument('--untargeted', type=int, default=False)
@@ -204,13 +204,14 @@ def train_epoch(
         device,
         attack,
         eps,
+        cw_scaling,
         beta,
         alpha,
-        n_iters
+        n_iters,
+        epoch
     ):
     model.train()
-    logger = CW_log(num_classes=num_classes)
-    # loader = tqdm(loader)
+    logger = CW_log(num_classes=num_classes)    
     list_gt_train = []
     list_target_train = []
     list_pred_train_clean = []
@@ -221,22 +222,32 @@ def train_epoch(
         if args.random_target:
             y_t = get_rand_target(y, num_classes=num_classes)
         else:
-            probs = eps
-            num_samples = y.shape[0]
-            sample_indices = torch.multinomial(probs, num_samples, replacement=True)
-            y_t = sample_indices
+            if epoch == 0:
+                y_t = get_rand_target(y, num_classes=num_classes)
+            else:
+                probs = torch.tensor(cw_scaling).cuda()
+                probs = torch.softmax(probs, dim=-1)
+                y_t = torch.multinomial(probs, y.shape[0], replacement=True)
+                indices_bool = y_t == y
+                true_indices = torch.nonzero(indices_bool).squeeze()
+                if true_indices.dim() > 0:
+                    for ind in true_indices:
+                        while y_t[ind] == y[ind]:
+                            y_t[ind] = torch.multinomial(probs, 1)
+                            
         loss, output = attack(
             model = model,
             normalize = normalize,
             x = x,
             y = y,
             y_t = y_t,
-            cw_eps = eps,
+            cw_eps = class_eps.cuda(),
             beta = beta,
             alpha = alpha,
             attack_mode_UT = args.untargeted,
             n_iters = 10
         )
+        output_clean = model(normalize(x))        
         if args.kldiv > 0:
             with torch.no_grad():
                 output_clean = model(normalize(x))
@@ -244,7 +255,7 @@ def train_epoch(
                 torch.nn.functional.log_softmax(output, dim=1),
                 torch.nn.functional.log_softmax(output_clean, dim=1)
             )
-            loss = loss + 2*loss_kl
+            loss = loss + args.kldiv*loss_kl
         
         opt.zero_grad()
         loss.backward()
@@ -291,22 +302,21 @@ def eval_epoch(
     for batch_idx, batch in enumerate(loader):
         x, y = batch
         x, y = x.to(device), y.to(device)
-        #y_t = torch.randint(0,10,(y.shape[0],)).cuda()  #random target
         y_t = y
-        #_, output = attack(
-        #    model = model,
-        #    normalize = normalize,
-        #    x = x,
-        #    y = y,
-        #    y_t = y_t,
-        #    eps = eps,
-        #    beta = beta,
-        #    alpha = alpha,
-        #    n_iters = n_iters
-        #)
-        attack = torchattacks.PGD(model, eps=8/255, alpha=2/255, steps=10, random_start=True)
-        adv_imgs = attack(x,y)
-        output = model(adv_imgs)
+        _, output = attack(
+            model = model,
+            normalize = normalize,
+            x = x,
+            y = y,
+            y_t = y_t,
+            eps = eps,
+            beta = beta,
+            alpha = alpha,
+            n_iters = n_iters
+        )
+        #attack = torchattacks.PGD(model, eps=8/255, alpha=2/255, steps=10, random_start=True)
+        #adv_imgs = attack(x,y)
+        #output = model(adv_imgs)
         robust_predictions = output.max(1)[1].cpu().numpy()
         clean_output = model(normalize(x)).detach()
         clean_predictions = clean_output.max(1)[1].cpu().numpy()
@@ -336,8 +346,8 @@ def eval_corruptions(model):
     model.eval()
     logger = CW_log(num_classes=num_classes)
     transform = transforms.Compose([
-        transforms.ToTensor(),
-       # transforms.Normalize(MEAN, STD)
+        transforms.ToTensor(),        
+        transforms.Normalize(MEAN, STD)
     ])
     corruptions = CORRUPTIONS
     accs = dict()
@@ -423,6 +433,7 @@ if __name__ == '__main__':
     torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     num_classes = 10 if args.data=="cifar10" else 100
+    cw_scaling = torch.ones(num_classes).cuda()
     normalize = normalize_cifar if args.data=="cifar10" else normalize_cifar_100
     print(f"num_classes = {num_classes}")
     print(f"normalize = {normalize}")
@@ -584,7 +595,7 @@ if __name__ == '__main__':
                     elif _adaptive_eps == "T-rob":
                         scaling = log_train_results[-1].robust_cw_acc_target
                     elif _adaptive_eps == "G-cfps":
-                        scaling = log_train_results[-1].robust_cw_cfps_gt
+                        scaling = log_train_results[-1].robust_cw_cfps_gt *2
                     elif _adaptive_eps == "T-cfps":
                         scaling = log_train_results[-1].robust_cw_cfps_target
                     elif _adaptive_eps == "G-cfns":
@@ -606,19 +617,10 @@ if __name__ == '__main__':
                     class_eps = class_eps.min(axis=0)
                 else:
                     raise NotImplementedError("shouldn't get here")
-                
-                # train_robust = torch.tensor(train_robust).to(device)
-                # if args.cfps:
-                #     if args.gt_targets:
-                #         train_robust = log_train_results[-1].robust_cw_cfps_gt
-                #     else:
-                #         train_robust = log_train_results[-1].robust_cw_cfps_target
-                # else:
-                #     if args.gt_targets:
-                #         train_robust = log_train_results[-1].robust_cw_acc_gt
-                #     else:
-                #         train_robust = log_train_results[-1].robust_cw_acc_target
+                    
                 class_eps = torch.tensor(class_eps).to(device)
+                cw_scaling = log_train_results[-1].robust_cw_cfps_gt * 2
+                print(cw_scaling)
             else:
                 class_eps = torch.ones(num_classes).to(device) * eps
         
@@ -633,6 +635,7 @@ if __name__ == '__main__':
         # set tau for FAT
         if args.mode == 'FAT':
             class_beta = args.tau
+            beta = args.tau
         
         if args.mode == 'AT':
             if args.ccm:
@@ -659,11 +662,13 @@ if __name__ == '__main__':
         elif args.mode == 'TRADES':
             if args.ccm:
                 attack = cw_trades_loss
+                attack_eval = trades_loss
             else:
                 attack = trades_loss
         elif args.mode == 'FAT':
             if args.ccm:
                 attack = cw_fat_loss
+                attack_eval = fat_loss
             else:
                 attack = fat_loss
 
@@ -676,9 +681,11 @@ if __name__ == '__main__':
                 device = device,
                 attack = attack,
                 eps = class_eps,
+                cw_scaling = cw_scaling,
                 beta = class_beta,
                 alpha = alpha,
-                n_iters = iteration
+                n_iters = iteration,
+                epoch =epoch
             )
         else:
             train_result = train_epoch(
@@ -688,9 +695,11 @@ if __name__ == '__main__':
                 device = device,
                 attack = attack,
                 eps = eps,
+                cw_scaling = cw_scaling,
                 beta = class_beta,
                 alpha = alpha,
-                n_iters = iteration
+                n_iters = iteration,
+                epoch = epoch
             )
         print()
         print("########## Training Result ##########")
