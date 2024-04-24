@@ -7,7 +7,7 @@ import torch
 # import torch.nn.functional as F
 import os
 from tqdm import tqdm
-from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss, apgd_loss, cw_apgd_loss  #, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
+from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss, apgd_loss, cw_apgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
 from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average,load_txt, CIFAR10C
 from model import PreActResNet18
 from model_wrn import WRN
