@@ -1,7 +1,7 @@
 Experiments to run
-1. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 0 --adaptive_eps G-rob T-cfps 
-2. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 1 --adaptive_eps G-rob --kldiv 0
-3. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 1 --adaptive_eps G-rob lr_scheduler steplr
-4. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 0 --adaptive_eps G-rob T-cfps lr_scheduler steplr
-5. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 0
-6. python target_train_new.py --mode AT --ccm --random_target --lambda-r 1.5 --lambda-c 1.5 --untargeted 
+1. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob T-cfps 
+2. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 1 --adaptive_eps G-rob --kldiv 0
+3. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 1 --adaptive_eps G-rob lr_scheduler steplr
+4. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob T-cfps lr_scheduler steplr
+5. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0
+6. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 
