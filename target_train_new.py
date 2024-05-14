@@ -67,6 +67,7 @@ def get_args():
     parser.add_argument('--num_workers_valid', default=4, type=int)
     parser.add_argument('--num_workers_test', default=4, type=int)
     parser.add_argument('--corruptions_path', default='./corruptions.txt',type=str)
+    parser.add_argument('--num_classes', default = 100)
     parser.add_argument('--seed',default=0,type=float)
     return parser.parse_args()
 
@@ -120,12 +121,12 @@ class CW_log():
             )
         )
         
-    def reset(self,which,num_classes=10):
+    def reset(self,which,args.num_classes):
         if which == "corruptions":
             d = getattr(self, which)
             d.N = 0
             d.gt.correct = 0
-            d.gt.tp_by_class = np.zeros(num_classes)
+            d.gt.tp_by_class = np.zeros(args.num_classes)
     
     def update(self, which, output, y, y_t,flips):
         assert which in ["clean", "robust", "corruptions"]
@@ -211,7 +212,7 @@ def train_epoch(
         epoch
     ):
     model.train()
-    logger = CW_log(num_classes=num_classes)    
+    logger = CW_log(num_classes = args.num_classes)    
     list_gt_train = []
     list_target_train = []
     list_pred_train_clean = []
@@ -220,10 +221,10 @@ def train_epoch(
         x, y = batch
         x, y = x.to(device), y.to(device)
         if args.random_target:
-            y_t = get_rand_target(y, num_classes=num_classes)
+            y_t = get_rand_target(y, num_classes=args.num_classes)
         else:
             if epoch == 0:
-                y_t = get_rand_target(y, num_classes=num_classes)
+                y_t = get_rand_target(y, num_classes=args.num_classes)
             else:
                 probs = torch.tensor(cw_scaling).cuda()
                 probs = torch.softmax(probs, dim=-1)
@@ -293,7 +294,7 @@ def eval_epoch(
         type
     ):
     model.eval()
-    logger = CW_log(num_classes=num_classes)
+    logger = CW_log(num_classes= args.num_classes)
     # loader = tqdm(loader)
     list_gt_eval = []
     list_target_eval = []
@@ -344,7 +345,7 @@ def eval_corruptions(model):
     STD  = [0.24703223, 0.24348513, 0.26158784]
     model.to(device)
     model.eval()
-    logger = CW_log(num_classes=num_classes)
+    logger = CW_log(num_classes = args.num_classes)
     transform = transforms.Compose([
         transforms.ToTensor(),        
         transforms.Normalize(MEAN, STD)
