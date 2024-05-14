@@ -357,7 +357,7 @@ def eval_corruptions(model):
             data_root = 'data'
             # load dataset
             dataset = CIFAR100C(
-                    os.path.join(data_root, 'CIFAR-10-C'),
+                    os.path.join(data_root, 'CIFAR-100-C'),
                     cname, corruptions=CORRUPTIONS, transform=transform
                 )
             corruption_loader = DataLoader(dataset, batch_size=1024,
