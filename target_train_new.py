@@ -121,7 +121,7 @@ class CW_log():
             )
         )
         
-    def reset(self,which,args.num_classes):
+    def reset(self,which,num_classes):
         if which == "corruptions":
             d = getattr(self, which)
             d.N = 0
@@ -372,7 +372,7 @@ def eval_corruptions(model):
                     logger.update("corruptions", z, y, y_t, flips=0)
                 corruptions = {f"{cname}" : logger.result_corruptions()}
                 list_corruptions.append(corruptions)
-                logger.reset("corruptions")
+                logger.reset("corruptions",num_classes=args.num_classes)
     return list_corruptions
 
 def get_rand_target(label, num_classes):
