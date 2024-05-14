@@ -1,5 +1,22 @@
 Experiments to run
+# Picking targets from CFPS distribution :) !
+1. python target_train_new.py --mode AT --ccm --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob 
+2. python target_train_new.py --mode FAT --ccm --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob 
+3. python target_train_new.py --mode TRADES --ccm --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob 
+
+# Picking targets randomly :) !
 1. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob  
-2. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 1 --adaptive_eps G-rob 
-3. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0
+2. python target_train_new.py --mode FAT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob
+3. python target_train_new.py --mode TRADES --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob
+
+# Targeted Training without eps scaling
+1. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0
+
+# Untargeted Training without eps scaling
 4. python target_train_new.py --mode AT --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 1
+
+For Baselines runs, refer: https://github.com/PKU-ML/CFA
+
+CIFAR10C
+1. wget https://zenodo.org/record/2535967/files/CIFAR-10-C.tar 
+2. wget https://zenodo.org/records/3555552/files/CIFAR-100-C.tar
