@@ -8,7 +8,7 @@ import torch
 import os
 from tqdm import tqdm
 from Targeted_attack import fgsm_loss, cw_fgsm_loss, pgd_loss, cw_pgd_loss, apgd_loss, cw_apgd_loss, trades_loss, cw_trades_loss, fat_loss, cw_fat_loss
-from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average,load_txt, CIFAR10C
+from utils import dev, normalize_cifar, normalize_cifar_100, get_dataset, weight_average,load_txt, CIFAR100C
 from model import PreActResNet18
 from model_wrn import WRN
 from model_cait import cait
@@ -356,7 +356,7 @@ def eval_corruptions(model):
     for ci, cname in enumerate(corruptions):
             data_root = 'data'
             # load dataset
-            dataset = CIFAR10C(
+            dataset = CIFAR100C(
                     os.path.join(data_root, 'CIFAR-10-C'),
                     cname, corruptions=CORRUPTIONS, transform=transform
                 )
