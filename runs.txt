@@ -20,3 +20,5 @@ For Baselines runs, refer: https://github.com/PKU-ML/CFA
 CIFAR10C
 1. wget https://zenodo.org/record/2535967/files/CIFAR-10-C.tar 
 2. wget https://zenodo.org/records/3555552/files/CIFAR-100-C.tar
+
+tar -xvf CIFAR-100-C.tar
