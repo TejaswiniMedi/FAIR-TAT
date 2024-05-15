@@ -31,7 +31,7 @@ import torchattacks
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default="cifar10", choices=["cifar10", "cifar100"])
+    parser.add_argument('--data', type=str, default="cifar100", choices=["cifar10", "cifar100"])
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--epochs', default=200, type=int)
     parser.add_argument('--model', default='WRN', type=str, choices=['PRN', 'WRN','cait']) #
