@@ -167,7 +167,7 @@ class Wide_ResNet(nn.Module):
         return out
 
 def WRN(num_classes=10):
-    return Wide_ResNet(28, 10, 0.3, num_classes=10)
+    return Wide_ResNet(28, 10, 0.3, num_classes=num_classes)
 
 if __name__ == '__main__':
     net=Wide_ResNet(28, 10, 0.3, 10)
