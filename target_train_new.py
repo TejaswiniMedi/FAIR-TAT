@@ -68,6 +68,7 @@ def get_args():
     parser.add_argument('--num_workers_test', default=4, type=int)
     parser.add_argument('--corruptions_path', default='./corruptions.txt',type=str)
     parser.add_argument('--num_classes', default = 100)
+    parser.add_argument('--saveall', default=1, type=int)
     parser.add_argument('--seed',default=0,type=float)
     return parser.parse_args()
 
@@ -823,7 +824,11 @@ if __name__ == '__main__':
         print(log_class_wise_eps[-1]*255)
         
         # save models
-        if epoch >= 0.5 * args.epochs:
+        if args.saveall:
+            torch.save(model.state_dict(), f'models/{args.fname}/{epoch}.pth')
+            torch.save(EMA_model.state_dict(), f'models/{args.fname}/EMA_{epoch}.pth')
+            torch.save(FAWA_model.state_dict(), f'models/{args.fname}/FAWA_{epoch}.pth')
+        elif epoch >= 0.5 * args.epochs:
             # Main
             index = test_result.robust_acc_gt + test_result.robust_cw_acc_gt.min()
             if index >= save_threshold[0] - 0.02 or epoch >= args.epochs-5:
