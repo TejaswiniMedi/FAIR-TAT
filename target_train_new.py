@@ -565,9 +565,7 @@ if __name__ == '__main__':
     log_FAWA_results = []
     log_class_wise_eps = []
     
-    save_threshold = [0, 0, 0] # robust+min_robust, for main, EMA, FAWA
-    for epoch in tqdm(range(epochs), desc="Epoch"):
-        # update learning rate
+    def update_learning_rate(epoch):
         if args.model == 'WRN':
             lr = lr_schedule_wrn(epoch)
         else:
@@ -583,6 +581,40 @@ if __name__ == '__main__':
                 raise RuntimeError(f"lr_schedule not understood: '{args.lr_schedule}'.")
         if lr is not None:
             opt.param_groups[0].update(lr=lr)
+        return lr
+    
+    ###### LOADING #######
+    # CHECKPOINTS #
+    fp_models = 'models/'+args.fname
+    
+    checkpoints = glob.glob(fp_models + "/FAWA_*")
+    epochs_present = list(sorted([int(os.path.split(t)[1][5:].replace(".pth","")) for t in checkpoints]))
+    if len(epochs_present) > 0:
+        epoch_start = epochs_present[-1]
+        print(f"!!! CONTINUE TRAINING FROM: {epoch_start} !!!")
+        model.load_state_dict(torch.load(fp_models + f"/{epoch_start}.pth"))
+        EMA_model.load_state_dict(torch.load(fp_models + f"/EMA_{epoch_start}.pth"))
+        FAWA_model.load_state_dict(torch.load(fp_models + f"/FAWA_{epoch_start}.pth"))
+        # LOGS #
+        fp_logs = 'logs/'+args.fname
+        log_train_results = torch.load(f"{fp_logs}/log_train_results.pth")
+        log_valid_results = torch.load(f"{fp_logs}/log_valid_results.pth")
+        log_test_results =  torch.load(f"{fp_logs}/log_test_results.pth")
+        log_EMA_results =   torch.load(f"{fp_logs}/log_EMA_results.pth")
+        log_FAWA_results =  torch.load(f"{fp_logs}/log_FAWA_results.pth")
+        
+        log_class_wise_eps = pd.read_csv(f"{fp_logs}/class_wise_eps.csv", index_col=0).values.tolist()
+    else:
+        epoch_start = 0
+    ###### / LOADING #######
+    
+    save_threshold = [0, 0, 0] # robust+min_robust, for main, EMA, FAWA
+    for epoch in tqdm(range(epochs), desc="Epoch"):
+        if epoch_start > epoch:
+            lr = update_learning_rate(epoch)
+            continue
+        # update learning rate
+        lr = update_learning_rate(epoch)
         
         # train
         model.train()
