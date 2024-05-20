@@ -587,7 +587,7 @@ if __name__ == '__main__':
     # CHECKPOINTS #
     fp_models = 'models/'+args.fname
     
-    checkpoints = glob.glob(fp_models + "/FAWA_*")
+    checkpoints = glob(fp_models + "/FAWA_*")
     epochs_present = list(sorted([int(os.path.split(t)[1][5:].replace(".pth","")) for t in checkpoints]))
     if len(epochs_present) > 0:
         epoch_start = epochs_present[-1]
