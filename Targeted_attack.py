@@ -413,8 +413,8 @@ def trades_loss(model,normalize, x, y,y_t, eps, beta, alpha, n_iters=10):
     robust_out = model(normalize_cifar(x_adv))
     loss_robust = (1.0 / batch_size) * cw_criterion(F.log_softmax(robust_out, dim=1),
                                                     F.softmax(model(normalize_cifar(x_natural)), dim=1))
-    batch_beta = cw_beta[y]
-    assert len(batch_beta) == len(loss_robust)
+    #batch_beta = cw_beta[y]
+    #assert len(batch_beta) == len(loss_robust)
     loss_robust = loss_robust.sum(1)
     #print(batch_beta.shape, loss_natural.shape, loss_robust.shape)
     loss = ((1-batch_beta) * loss_natural + batch_beta * loss_robust).sum()
