@@ -696,13 +696,13 @@ if __name__ == '__main__':
         elif args.mode == 'TRADES':
             if args.ccm:
                 attack = cw_trades_loss
-                attack_eval = trades_loss
+                attack_eval = pgd_loss
             else:
                 attack = trades_loss
         elif args.mode == 'FAT':
             if args.ccm:
                 attack = cw_fat_loss
-                attack_eval = fat_loss
+                attack_eval = pgd_loss
             else:
                 attack = fat_loss
 
