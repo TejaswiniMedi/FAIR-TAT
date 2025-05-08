@@ -26,7 +26,7 @@ python target_train_new.py --mode TRADES --ccm --random_target --lambda-r 0.5 --
 ```
 
 
-To Download Corruptions dataset
+To Download Corruptions dataset and place it in the data folder of current working directory
 ```
 wget https://zenodo.org/record/2535967/files/CIFAR-10-C.tar
 wget https://zenodo.org/records/3555552/files/CIFAR-100-C.tar
