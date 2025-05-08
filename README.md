@@ -24,7 +24,6 @@ python target_train_new.py --mode AT     --ccm --random_target --lambda-r 0.5 --
 python target_train_new.py --mode FAT    --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob
 python target_train_new.py --mode TRADES --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob
 ```
-For queries: contact: tejaswini.medi@uni-mannheim.de
 
 
 To Download Corruptions dataset
