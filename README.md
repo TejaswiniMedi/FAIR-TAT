@@ -37,22 +37,13 @@ To cite our work
 
 ```
 @INPROCEEDINGS{10943714,
-
   author={Medi, Tejaswini and Jung, Steffen and Keuper, Margret},
-
   booktitle={2025 IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)}, 
-
   title={FAIR-TAT: Improving Model Fairness Using Targeted Adversarial Training}, 
-
   year={2025},
-
   volume={},
-
   number={},
-
   pages={7827-7836},
-
   keywords={Training;Computer vision;Analytical models;Accuracy;Computational modeling;Buildings;Artificial neural networks;Robustness;Data models;Resilience;adversarial fairness;adversarial robustness;adversarial training},
-
   doi={10.1109/WACV61041.2025.00760}}
 ``
