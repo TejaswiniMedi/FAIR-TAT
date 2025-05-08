@@ -49,4 +49,5 @@ To cite our work
   pages={7827-7836},
   keywords={Training;Computer vision;Analytical models;Accuracy;Computational modeling;Buildings;Artificial neural networks;Robustness;Data models;Resilience;adversarial fairness;adversarial robustness;adversarial training},
   doi={10.1109/WACV61041.2025.00760}}
-``
+```
+contact in case of queries : tejaswini.medi@uni-mannheim.de
