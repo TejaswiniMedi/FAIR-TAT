@@ -1,5 +1,5 @@
 # This is official code for [FAIR-TAT paper](https://ieeexplore.ieee.org/abstract/document/10943714)
-This repository contains the code and experiments for the FAIR-TAT framework, which introduces class-wise fairness into adversarial training through tailored targeted attacks using CFPS-based class similarity. The implementation builds on adversarial training baselines such as AT, FAT, and TRADES, while incorporating targeted sampling and adaptive ε-scaling strategies.
+This repository contains the code and experiments for the [FAIR-TAT paper](https://ieeexplore.ieee.org/abstract/document/10943714) framework, which introduces class-wise fairness into adversarial training through tailored targeted attacks using class-wise confusion based false positive scores (CFPS). The implementation builds on adversarial training baselines such as AT, FAT, and TRADES, while incorporating targeted sampling and adaptive ε-scaling strategies.
 
 To conveniently install dependencies automatically with [anaconda](https://www.anaconda.com/) you can use the following:
 
