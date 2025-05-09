@@ -7,6 +7,8 @@ To conveniently install dependencies automatically with [anaconda](https://www.a
 conda env create -f env.yml
 
 conda activate spline
+
+pip install torchattacks
 ```
 
 ✅ Targeted Training (CFPS-guided targets, with adaptive ε)
@@ -25,7 +27,7 @@ python target_train_new.py --mode FAT    --ccm --random_target --lambda-r 0.5 --
 python target_train_new.py --mode TRADES --ccm --random_target --lambda-r 0.5 --lambda-c 0.5 --untargeted 0 --adaptive_eps G-rob
 ```
 
-
+Change the arguments in target_train_new.py for incorparating different datasets & models.
 To Download Corruptions dataset and place it in the data folder of current working directory
 ```
 wget https://zenodo.org/record/2535967/files/CIFAR-10-C.tar
